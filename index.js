@@ -1,4 +1,5 @@
 import app from "./app.js";
+import prisma from "./lib/prisma.js";
 
 // Error handling middleware
 app.use((err, req, res, next) => {
