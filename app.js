@@ -3,10 +3,8 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import prisma from "./lib/prisma.js";
 
 // Import routes
 import auditlogRoutes from "./routes/auditlog.route.js";
@@ -92,15 +90,6 @@ app.get("/", (req, res) => {
   });
 });
 
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Serve static files
-app.use("/uploads", express.static(uploadDir));
-
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -117,83 +106,4 @@ app.use("/api/auditlog", auditlogRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/email", emailRoutes);
 app.use("/api/reviews", reviewRoutes);
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error("Error:", err);
-
-  // Handle Prisma errors
-  if (err.code?.startsWith("P")) {
-    return res.status(400).json({
-      success: false,
-      status: 400,
-      message: "Database operation failed",
-      error: process.env.NODE_ENV === "development" ? err.message : undefined,
-    });
-  }
-
-  // Handle JWT errors
-  if (err.name === "JsonWebTokenError") {
-    return res.status(401).json({
-      success: false,
-      status: 401,
-      message: "Invalid token",
-    });
-  }
-
-  const errorStatus = err.status || 500;
-  const errorMessage = err.message || "Something went wrong!";
-
-  return res.status(errorStatus).json({
-    success: false,
-    status: errorStatus,
-    message: errorMessage,
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    status: 404,
-    message: "Route not found",
-  });
-});
-
-// Start server
-const PORT = process.env.PORT || 8800;
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-
-// Handle graceful shutdown
-const gracefulShutdown = async () => {
-  console.log("Received shutdown signal");
-  server.close(async () => {
-    console.log("Server closed");
-    try {
-      await prisma.$disconnect();
-      console.log("Database connection closed");
-      process.exit(0);
-    } catch (error) {
-      console.error("Error during shutdown:", error);
-      process.exit(1);
-    }
-  });
-};
-
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
-
-// Handle uncaught exceptions
-process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
-  gracefulShutdown();
-});
-
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (error) => {
-  console.error("Unhandled Rejection:", error);
-  gracefulShutdown();
-});
+export default app;

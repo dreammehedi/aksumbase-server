@@ -1,11 +1,11 @@
-import { v2 as cloudinary } from 'cloudinary';
-import { createError } from './error.js';
+import { v2 as cloudinary } from "cloudinary";
+import { createError } from "./error.js";
 
 export const uploadToCloudinary = async (file) => {
   try {
     const result = await cloudinary.uploader.upload(file, {
       resource_type: "auto",
-      folder: "your_app_name"
+      folder: "your_app_name",
     });
     return result;
   } catch (error) {

@@ -1,11 +1,11 @@
-import prisma from '../lib/prisma.js';
-    
+import prisma from "../lib/prisma.js";
+
 export const createNotification = async ({
   userId,
   title,
   message,
-  type = 'info',
-  link = null
+  type = "info",
+  link = null,
 }) => {
   try {
     await prisma.notification.create({
@@ -14,10 +14,10 @@ export const createNotification = async ({
         title,
         message,
         type,
-        link
-      }
+        link,
+      },
     });
   } catch (error) {
-    console.error('Failed to create notification:', error);
+    console.error("Failed to create notification:", error);
   }
 };
