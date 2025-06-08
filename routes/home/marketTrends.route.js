@@ -8,8 +8,7 @@ import {
   updateMarketTrend,
 } from "../../controllers/home/marketTrends.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
-import { verifyAdmin } from "../../middleware/verifyAdmin.js";
-import { verifyToken } from "../../middleware/verifyToken.js";
+import { verifyAdmin, verifyToken } from "../../middleware/verifyToken.js";
 
 const MarketTrendsRouter = express.Router();
 

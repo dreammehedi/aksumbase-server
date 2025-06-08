@@ -176,3 +176,16 @@ model MarketTrends {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+
+// Mortgage Tools
+
+model MortageTools {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  name   String
+  description String
+  ctaName String
+  ctaLink String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

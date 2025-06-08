@@ -1,7 +1,7 @@
 import prisma from "../lib/prisma.js";
 import { createError } from "../utils/error.js";
 
-export const verifyAdmin = async (req, res, next) => {
+export const verifyAdminOld = async (req, res, next) => {
   try {
     const userId = req.userId;
 
