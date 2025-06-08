@@ -64,6 +64,7 @@ const allowedOrigins = [
   "http://localhost:5173", // Development
   "https://aksumbase.com", // Production
   "https://www.aksumbase.com", // Production with www
+  "https://aksumbase-frontend-qsfw.vercel.app"
 ];
 
 app.use(
