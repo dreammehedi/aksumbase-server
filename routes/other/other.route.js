@@ -1,22 +1,24 @@
 import express from "express";
 import { upload } from "../../config/upload.js";
-import {
-  getPrivacyPolicy,
-  getTermsOfUse,
-  updatePrivacyPolicy,
-  updateTermsOfUse,
-} from "../../controllers/other/other.controller.js";
 import { verifyAdmin, verifyToken } from "../../middleware/verifyToken.js";
 
 const OtherRouter = express.Router();
 
 import {
   getBuyingGuides,
+  getMarketAnalysis,
   getMarketInsights,
+  getPress,
+  getPrivacyPolicy,
   getSellingTips,
+  getTermsOfUse,
   updateBuyingGuides,
+  updateMarketAnalysis,
   updateMarketInsights,
+  updatePress,
+  updatePrivacyPolicy,
   updateSellingTips,
+  updateTermsOfUse,
 } from "../../controllers/other/other.controller.js";
 
 OtherRouter.get("/privacy-policy", getPrivacyPolicy);
@@ -63,5 +65,17 @@ OtherRouter.put(
   upload.none(),
   updateMarketInsights
 );
+
+OtherRouter.get("/market-analysis", getMarketAnalysis);
+OtherRouter.put(
+  "/market-analysis",
+  verifyToken,
+  verifyAdmin,
+  upload.none(),
+  updateMarketAnalysis
+);
+
+OtherRouter.get("/press", getPress);
+OtherRouter.put("/press", verifyToken, verifyAdmin, upload.none(), updatePress);
 
 export default OtherRouter;

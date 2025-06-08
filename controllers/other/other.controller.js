@@ -214,3 +214,85 @@ export const updateMarketInsights = async (req, res) => {
     });
   }
 };
+
+export const getMarketAnalysis = async (req, res) => {
+  try {
+    const data = await prisma.marketAnalysis.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get market analysis error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch market analysis" });
+  }
+};
+
+export const updateMarketAnalysis = async (req, res) => {
+  const { content, id } = req.body;
+
+  try {
+    const existing = await prisma.marketAnalysis.findUnique({ where: { id } });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Market analysis not found" });
+    }
+
+    const updated = await prisma.marketAnalysis.update({
+      where: { id },
+      data: { content },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update market analysis error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update market analysis",
+      error: error.message,
+    });
+  }
+};
+
+export const getPress = async (req, res) => {
+  try {
+    const data = await prisma.press.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get press error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch press" });
+  }
+};
+
+export const updatePress = async (req, res) => {
+  const { content, id } = req.body;
+
+  try {
+    const existing = await prisma.press.findUnique({ where: { id } });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Press not found" });
+    }
+
+    const updated = await prisma.press.update({
+      where: { id },
+      data: { content },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update press error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update press",
+      error: error.message,
+    });
+  }
+};
