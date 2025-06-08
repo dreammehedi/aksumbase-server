@@ -44,8 +44,8 @@ router.put("/:id/report", verifyToken, reportPost);
 router.put("/:id/aiflag", verifyToken, aiFlagPost);
 
 // Basic CRUD routes last
-router.get("/", verifyToken, getPosts);
-router.get("/:id", verifyToken, getPostById);
+router.get("/", getPosts);
+router.get("/:id", getPostById);
 router.post("/", verifyToken, addPost);
 router.put("/:id", verifyToken, updatePost);
 router.delete("/:id", verifyToken, deletePost);
