@@ -154,10 +154,6 @@ model AuditLog {
 
 
 
-
-
-
-
 // hero banner
 model HeroBanner {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -167,4 +163,107 @@ model HeroBanner {
   imagePublicId  String?  // <-- Add this line
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+
+// market trends
+model MarketTrends {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  name   String
+  price  Float
+  day    Int
+  status String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+
+// Mortgage Tools
+model MortageTools {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  name   String
+  description String
+  ctaName String
+  ctaLink String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+
+
+// privacy policy
+model PrivacyPolicy {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// terms of use
+model TermsOfUse {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// buying guides
+model BuyingGuides {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// selling tips
+model SellingTips {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// market insights
+model MarketInsights {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// market analysis
+model MarketAnalysis {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// press
+model Press {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// blog
+model Blog {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  title            String
+  slug             String   @unique // for SEO-friendly URLs
+  shortDescription String
+  longDescription  String
+  image            String
+  imagePublicId    String?
+  category         String   // e.g., "Buying", "Selling", "Investment", etc.
+  tags             String[] // e.g., ["home buying", "mortgage", "first-time buyers"]
+  location         String?  // optional, if the blog is about a specific region
+  isFeatured       Boolean  @default(false)
+  authorName       String
+  authorImage     String
+  authorImagePublicId     String?  
+  views            Int      @default(0) // For analytics
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
