@@ -5,6 +5,7 @@ import {
   createBlog,
   deleteBlog,
   getBlog,
+  getBlogBySlug,
   updateBlog,
 } from "../../controllers/other/blog.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
@@ -42,4 +43,5 @@ BlogRouter.delete(
   deleteBlog
 );
 
+BlogRouter.get("/blog-details/:slug", getBlogBySlug);
 export default BlogRouter;

@@ -219,3 +219,24 @@ export const deleteBlog = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to delete blog" });
   }
 };
+
+export const getBlogBySlug = async (req, res) => {
+  const { slug } = req.params;
+
+  try {
+    const blog = await prisma.blog.findUnique({
+      where: { slug },
+    });
+
+    if (!blog) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Blog not found" });
+    }
+
+    res.status(200).json({ success: true, data: blog });
+  } catch (error) {
+    console.error("Get blog by slug error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch blog" });
+  }
+};
