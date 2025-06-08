@@ -154,10 +154,6 @@ model AuditLog {
 
 
 
-
-
-
-
 // hero banner
 model HeroBanner {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -165,6 +161,18 @@ model HeroBanner {
   description    String
   image          String
   imagePublicId  String?  // <-- Add this line
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+
+// market trends
+model MarketTrends {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  name   String
+  price  Float
+  day    Int
+  status String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

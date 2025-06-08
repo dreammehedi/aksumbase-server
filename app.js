@@ -11,6 +11,7 @@ import auditlogRoutes from "./routes/auditlog.route.js";
 import authRoutes from "./routes/auth.route.js";
 import emailRoutes from "./routes/email.route.js";
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
+import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
 import postRoutes from "./routes/post.route.js";
 import reviewRoutes from "./routes/review.route.js";
 import testRoutes from "./routes/test.route.js";
@@ -110,4 +111,5 @@ app.use("/api/reviews", reviewRoutes);
 
 // home routes
 app.use("/api", HeroBannerRouter);
+app.use("/api", MarketTrendsRouter);
 export default app;
