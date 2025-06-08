@@ -4,10 +4,17 @@ import {
   getHeroBanner,
   updateHeroBanner,
 } from "../../controllers/home/heroBanner.controller.js";
+import { verifyAdmin, verifyToken } from "../../middleware/verifyToken.js";
 
 const HeroBannerRouter = express.Router();
 
 HeroBannerRouter.get("/hero-banner", getHeroBanner);
-HeroBannerRouter.put("/hero-banner", upload.single("image"), updateHeroBanner);
+HeroBannerRouter.put(
+  "/hero-banner",
+  verifyToken,
+  verifyAdmin,
+  upload.single("image"),
+  updateHeroBanner
+);
 
 export default HeroBannerRouter;

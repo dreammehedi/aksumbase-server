@@ -206,3 +206,27 @@ model TermsOfUse {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+// buying guides
+model BuyingGuides {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// selling tips
+model SellingTips {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// market insights
+model MarketInsights {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
