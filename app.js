@@ -9,11 +9,13 @@ import { fileURLToPath } from "url";
 // Import routes
 import auditlogRoutes from "./routes/auditlog.route.js";
 import authRoutes from "./routes/auth.route.js";
+import AuthenticationRouter from "./routes/auth/authentication.route.js";
 import emailRoutes from "./routes/email.route.js";
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
 import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
 import MortageToolsRouter from "./routes/home/mortageTools.route.js";
 import BlogRouter from "./routes/other/blog.route.js";
+import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
 import OtherRouter from "./routes/other/other.route.js";
 import postRoutes from "./routes/post.route.js";
 import reviewRoutes from "./routes/review.route.js";
@@ -113,10 +115,13 @@ app.use("/api/test", testRoutes);
 app.use("/api/email", emailRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// home routes
+// routes
 app.use("/api", HeroBannerRouter);
 app.use("/api", MarketTrendsRouter);
 app.use("/api", MortageToolsRouter);
 app.use("/api", OtherRouter);
 app.use("/api", BlogRouter);
+app.use("/api/authentication", AuthenticationRouter);
+app.use("/api", EmailConfigurationRouter);
+
 export default app;
