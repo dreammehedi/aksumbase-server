@@ -39,12 +39,15 @@ model User {
   username          String         @unique
   email             String         @unique
   password          String
-  avatar            String?
+  avatar            String?        
+  avatarPublicId    String?        
   role              String         @default("user")
   isAdmin           Boolean        @default(false)
   phone             String?
   bio               String?
-  status            String         @default("active")
+  resetCode         String?       
+  resetCodeExpiration DateTime?       @default(now())
+  status            String         @default("pending")
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   posts             Post[]
@@ -55,6 +58,8 @@ model User {
   reviews           Review[]
   auditLogs         AuditLog[]
 }
+
+
 
 enum Status {
   active
@@ -273,3 +278,22 @@ model Blog {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
+
+
+// email configuration
+model EmailConfiguration {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  emailMailer    String
+  emailHost      String
+  emailPort      Int
+  emailUserName  String
+  emailPassword  String
+  emailEncryption String
+  emailFromName  String
+  emailAddress   String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+
+
