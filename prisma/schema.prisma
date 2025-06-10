@@ -312,3 +312,16 @@ model SellerResources {
   updatedAt      DateTime @updatedAt
 }
 
+
+// aksumbase developemnt platform
+model DevelopmentPlatform {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  description    String
+  iosLink        String
+  androidLink    String
+  image          String
+  imagePublicId  String?  // <-- Add this line
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

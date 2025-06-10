@@ -11,6 +11,7 @@ import auditlogRoutes from "./routes/auditlog.route.js";
 import authRoutes from "./routes/auth.route.js";
 import AuthenticationRouter from "./routes/auth/authentication.route.js";
 import emailRoutes from "./routes/email.route.js";
+import DevelopmentPlatformRouter from "./routes/home/developmentPlatform.route.js";
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
 import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
 import MortageToolsRouter from "./routes/home/mortageTools.route.js";
@@ -124,5 +125,6 @@ app.use("/api", BlogRouter);
 app.use("/api/authentication", AuthenticationRouter);
 app.use("/api", EmailConfigurationRouter);
 app.use("/api", SellerResourcesRouter);
+app.use("/api", DevelopmentPlatformRouter);
 
 export default app;
