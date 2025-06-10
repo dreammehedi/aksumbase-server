@@ -8,7 +8,8 @@ import {
   updateUser,
   updateUserRole,
 } from "../controllers/user.controller.js";
-import { verifyAdmin, verifyToken } from "../middleware/verifyToken.js";
+import { verifyAdminOld } from "../middleware/verifyAdmin.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
@@ -16,11 +17,11 @@ const router = express.Router();
 router.get("/me", verifyToken, getCurrentUser);
 
 // Protected routes
-router.get("/dashboard", verifyToken, verifyAdmin, getDashboardStats);
-router.get("/", verifyToken, verifyAdmin, getUser);
-router.get("/:id", verifyToken, verifyAdmin, getUserById);
-router.put("/:id", verifyToken, verifyAdmin, updateUser);
-router.put("/:id/role", verifyToken, verifyAdmin, updateUserRole);
-router.delete("/:id", verifyToken, verifyAdmin, deleteUser);
+router.get("/dashboard", verifyToken, verifyAdminOld, getDashboardStats);
+router.get("/", verifyToken, verifyAdminOld, getUser);
+router.get("/:id", verifyToken, verifyAdminOld, getUserById);
+router.put("/:id", verifyToken, verifyAdminOld, updateUser);
+router.put("/:id/role", verifyToken, verifyAdminOld, updateUserRole);
+router.delete("/:id", verifyToken, verifyAdminOld, deleteUser);
 
 export default router;

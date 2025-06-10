@@ -8,7 +8,8 @@ import {
   updateMarketTrend,
 } from "../../controllers/home/marketTrends.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
-import { verifyAdmin, verifyToken } from "../../middleware/verifyToken.js";
+import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
+import { verifyToken } from "../../middleware/verifyToken.js";
 
 const MarketTrendsRouter = express.Router();
 
@@ -17,15 +18,21 @@ MarketTrendsRouter.get("/market-trends", paginationMiddleware, marketTrends);
 MarketTrendsRouter.post(
   "/market-trends",
   verifyToken,
-  verifyAdmin,
+  verifyAdminOld,
   upload.none(),
   createMarketTrend
 );
-MarketTrendsRouter.put("/market-trends", upload.none(), updateMarketTrend);
+MarketTrendsRouter.put(
+  "/market-trends",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  updateMarketTrend
+);
 MarketTrendsRouter.delete(
   "/market-trends/:id",
   verifyToken,
-  verifyAdmin,
+  verifyAdminOld,
   upload.none(),
   deleteMarketTrend
 );

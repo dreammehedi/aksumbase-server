@@ -280,6 +280,9 @@ model Blog {
 }
 
 
+
+
+
 // email configuration
 model EmailConfiguration {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -296,4 +299,16 @@ model EmailConfiguration {
 }
 
 
+
+// Seller Resources
+model SellerResources {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  description    String?
+  image          String?
+  imagePublicId  String?
+  items          Json?     // Each item will have { image, content }
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
 
