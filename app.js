@@ -20,6 +20,7 @@ import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js
 import OtherRouter from "./routes/other/other.route.js";
 import SellerResourcesRouter from "./routes/other/sellerResources.route.js";
 import postRoutes from "./routes/post.route.js";
+import PropertyRouter from "./routes/property/property.route.js";
 import reviewRoutes from "./routes/review.route.js";
 import testRoutes from "./routes/test.route.js";
 import userRoutes from "./routes/user.route.js";
@@ -126,5 +127,6 @@ app.use("/api/authentication", AuthenticationRouter);
 app.use("/api", EmailConfigurationRouter);
 app.use("/api", SellerResourcesRouter);
 app.use("/api", DevelopmentPlatformRouter);
+app.use("/api", PropertyRouter);
 
 export default app;

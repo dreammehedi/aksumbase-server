@@ -10,7 +10,6 @@ export const verifyAdminOld = async (req, res, next) => {
       where: { id: userId },
       select: { role: true },
     });
-
     // Check if user exists and is an admin
     if (!user || user.role !== "admin") {
       return next(
