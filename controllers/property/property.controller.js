@@ -18,15 +18,95 @@ export const getProperty = async (req, res) => {
   }
 };
 
+// export const property = async (req, res) => {
+//   try {
+//     const { skip = 0, limit = 10 } = req.pagination || {};
+//     const search = req.query.search || "";
+
+//     const where = {
+//       OR: [
+//         { title: { contains: search, mode: "insensitive" } },
+//         { slug: { contains: search, mode: "insensitive" } },
+//       ],
+//     };
+
+//     const data = await prisma.property.findMany({
+//       where,
+//       skip: Number(skip),
+//       take: Number(limit),
+//       orderBy: { createdAt: "desc" },
+//     });
+
+//     const total = await prisma.blog.count({ where });
+
+//     res.status(200).json({
+//       success: true,
+//       data,
+//       pagination: { total, skip: Number(skip), limit: Number(limit) },
+//     });
+//   } catch (error) {
+//     console.error("Get property error:", error);
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to fetch property" });
+//   }
+// };
+
 export const property = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};
     const search = req.query.search || "";
 
+    const {
+      city,
+      state,
+      zip,
+      type,
+      property,
+      minPrice,
+      maxPrice,
+      bedrooms,
+      bathrooms,
+      furnished,
+      garage,
+      pool,
+      listingType,
+      listingStatus,
+      amenities,
+    } = req.query;
+
     const where = {
-      OR: [
-        { title: { contains: search, mode: "insensitive" } },
-        { slug: { contains: search, mode: "insensitive" } },
+      AND: [
+        {
+          OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { slug: { contains: search, mode: "insensitive" } },
+          ],
+        },
+        city ? { city: { equals: city, mode: "insensitive" } } : {},
+        state ? { state: { equals: state, mode: "insensitive" } } : {},
+        zip ? { zip: { equals: zip } } : {},
+        type ? { type: { equals: type } } : {},
+        property ? { property: { equals: property } } : {},
+        listingType ? { listingType: { equals: listingType } } : {},
+        listingStatus ? { listingStatus: { equals: listingStatus } } : {},
+        minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
+        maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
+        bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
+        bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
+        furnished !== undefined ? { furnished: furnished === "true" } : {},
+        garage !== undefined ? { garage: garage === "true" } : {},
+        pool !== undefined ? { pool: pool === "true" } : {},
+        // amenities filter (matches any of the provided amenities)
+        amenities
+          ? {
+              amenities: {
+                hasSome: Array.isArray(amenities)
+                  ? amenities
+                  : amenities.split(","),
+              },
+            }
+          : {},
       ],
     };
 
@@ -37,12 +117,16 @@ export const property = async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
-    const total = await prisma.blog.count({ where });
+    const total = await prisma.property.count({ where });
 
     res.status(200).json({
       success: true,
       data,
-      pagination: { total, skip: Number(skip), limit: Number(limit) },
+      pagination: {
+        total,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
     });
   } catch (error) {
     console.error("Get property error:", error);
