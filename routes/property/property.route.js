@@ -9,7 +9,6 @@ import {
   updateProperty,
 } from "../../controllers/property/property.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
-import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
 
 const PropertyRouter = express.Router();
@@ -19,21 +18,21 @@ PropertyRouter.get("/property", paginationMiddleware, property);
 PropertyRouter.post(
   "/property",
   verifyToken,
-  verifyAdminOld,
+  // verifyAdminOld,
   upload.array("images", 10),
   createProperty
 );
 PropertyRouter.put(
   "/property",
   verifyToken,
-  verifyAdminOld,
+  // verifyAdminOld,
   upload.array("images", 10),
   updateProperty
 );
 PropertyRouter.delete(
   "/property/:id",
   verifyToken,
-  verifyAdminOld,
+  // verifyAdminOld,
   upload.none(),
   deleteProperty
 );
