@@ -8,7 +8,8 @@ import {
   updateData,
 } from "../../controllers/home/mortageTools.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
-import { verifyAdmin, verifyToken } from "../../middleware/verifyToken.js";
+import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
+import { verifyToken } from "../../middleware/verifyToken.js";
 
 const MortageToolsRouter = express.Router();
 
@@ -17,15 +18,21 @@ MortageToolsRouter.get("/mortage-tools", paginationMiddleware, getData);
 MortageToolsRouter.post(
   "/mortage-tools",
   verifyToken,
-  verifyAdmin,
+  verifyAdminOld,
   upload.none(),
   createData
 );
-MortageToolsRouter.put("/mortage-tools", upload.none(), updateData);
+MortageToolsRouter.put(
+  "/mortage-tools",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  updateData
+);
 MortageToolsRouter.delete(
   "/mortage-tools/:id",
   verifyToken,
-  verifyAdmin,
+  verifyAdminOld,
   upload.none(),
   deleteData
 );

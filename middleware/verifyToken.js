@@ -15,14 +15,7 @@ export const verifyToken = (req, res, next) => {
 
     req.userId = decoded.id;
     req.role = decoded.role;
+    console.log(decoded);
     next();
   });
-};
-
-// Add a new middleware for admin verification
-export const verifyAdmin = (req, res, next) => {
-  if (req.role !== "admin") {
-    return next(createError(403, "You are not authorized!"));
-  }
-  next();
 };

@@ -9,7 +9,8 @@ import {
   updateBlog,
 } from "../../controllers/other/blog.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
-import { verifyAdmin, verifyToken } from "../../middleware/verifyToken.js";
+import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
+import { verifyToken } from "../../middleware/verifyToken.js";
 
 const BlogRouter = express.Router();
 
@@ -18,7 +19,7 @@ BlogRouter.get("/blog", paginationMiddleware, blog);
 BlogRouter.post(
   "/blog",
   verifyToken,
-  verifyAdmin,
+  verifyAdminOld,
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "authorImage", maxCount: 1 },
@@ -28,7 +29,7 @@ BlogRouter.post(
 BlogRouter.put(
   "/blog",
   verifyToken,
-  verifyAdmin,
+  verifyAdminOld,
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "authorImage", maxCount: 1 },
@@ -38,7 +39,7 @@ BlogRouter.put(
 BlogRouter.delete(
   "/blog/:id",
   verifyToken,
-  verifyAdmin,
+  verifyAdminOld,
   upload.none(),
   deleteBlog
 );
