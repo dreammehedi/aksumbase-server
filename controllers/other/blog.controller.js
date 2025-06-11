@@ -78,6 +78,8 @@ export const createBlog = async (req, res) => {
 
     // Prepare slug
     const slug = slugify(title, { lower: true, strict: true });
+    // Prepare slug
+    const categorySlug = slugify(category, { lower: true, strict: true });
 
     // Upload images
     const image = req.files?.image?.[0];
@@ -99,6 +101,7 @@ export const createBlog = async (req, res) => {
         image: image.path,
         imagePublicId: image.filename,
         category,
+        categorySlug,
         tags: Array.isArray(tags) ? tags : JSON.parse(tags || "[]"),
         location,
         isFeatured: isFeatured === "true" || isFeatured === true,
@@ -146,6 +149,7 @@ export const updateBlog = async (req, res) => {
       shortDescription,
       longDescription,
       category,
+      categorySlug: slugify(category, { lower: true, strict: true }),
       tags: Array.isArray(tags) ? tags : JSON.parse(tags || "[]"),
       location,
       isFeatured: isFeatured === "true" || isFeatured === true,
@@ -234,17 +238,33 @@ export const getBlogBySlug = async (req, res) => {
         .json({ success: false, message: "Blog not found" });
     }
 
-    // Update the visit count
+    // Increment view count
     await prisma.blog.update({
       where: { slug },
       data: {
         views: {
-          increment: 1, // increment visitCount by 1
+          increment: 1,
         },
       },
     });
 
-    res.status(200).json({ success: true, data: blog });
+    // Fetch related blogs by same category, excluding the current blog
+    const relatedBlogs = await prisma.blog.findMany({
+      where: {
+        categorySlug: blog.categorySlug,
+        slug: { not: slug }, // exclude the current blog
+      },
+      take: 3, // limit number of related blogs (optional)
+      orderBy: {
+        createdAt: "desc", // optional: show newest related first
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: blog,
+      relatedBlogs,
+    });
   } catch (error) {
     console.error("Get blog by slug error:", error);
     res.status(500).json({ success: false, message: "Failed to fetch blog" });
