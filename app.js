@@ -7,9 +7,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // Import routes
+import reminderEmailJob from "./helper/reminderEmailJob.js";
+import roleExpiryChecker from "./helper/roleExpiryChecker.js";
 import auditlogRoutes from "./routes/auditlog.route.js";
 import authRoutes from "./routes/auth.route.js";
 import AuthenticationRouter from "./routes/auth/authentication.route.js";
+import RolePackageRouter from "./routes/auth/rolePackage.route.js";
+import UserRoleRouter from "./routes/auth/userRole.route.js";
 import emailRoutes from "./routes/email.route.js";
 import DevelopmentPlatformRouter from "./routes/home/developmentPlatform.route.js";
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
@@ -69,6 +73,7 @@ const allowedOrigins = [
   "http://localhost:5173", // Development
   "https://aksumbase.com", // Production
   "https://www.aksumbase.com", // Production with www
+  "https://aksumbase-frontend.vercel.app",
 ];
 
 app.use(
@@ -128,5 +133,10 @@ app.use("/api", EmailConfigurationRouter);
 app.use("/api", SellerResourcesRouter);
 app.use("/api", DevelopmentPlatformRouter);
 app.use("/api", PropertyRouter);
+app.use("/api", RolePackageRouter);
+app.use("/api", UserRoleRouter);
 
+// Start cron job
+roleExpiryChecker();
+reminderEmailJob();
 export default app;
