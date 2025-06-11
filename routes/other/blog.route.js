@@ -37,7 +37,7 @@ BlogRouter.put(
   updateBlog
 );
 BlogRouter.delete(
-  "/blog/:id",
+  "/blog/delete",
   verifyToken,
   verifyAdminOld,
   upload.none(),

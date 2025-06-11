@@ -189,34 +189,42 @@ export const updateBlog = async (req, res) => {
 };
 
 export const deleteBlog = async (req, res) => {
-  const { id } = req.params;
+  const blogIds = req.body;
+
+  if (!Array.isArray(blogIds) || blogIds.length === 0) {
+    return res
+      .status(400)
+      .json({ success: false, message: "No blog IDs provided" });
+  }
 
   try {
-    const blog = await prisma.blog.findUnique({ where: { id } });
+    for (const id of blogIds) {
+      const blog = await prisma.blog.findUnique({ where: { id } });
 
-    if (!blog) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Blog not found" });
+      if (!blog) {
+        continue; // Skip if blog not found
+      }
+
+      // Delete blog image from Cloudinary
+      if (blog.imagePublicId) {
+        await cloudinary.uploader.destroy(blog.imagePublicId);
+      }
+
+      // Delete author image from Cloudinary
+      if (blog.authorImagePublicId) {
+        await cloudinary.uploader.destroy(blog.authorImagePublicId);
+      }
+
+      // Delete blog from DB
+      await prisma.blog.delete({ where: { id } });
     }
-
-    // Delete blog image from Cloudinary
-    if (blog.imagePublicId) {
-      await cloudinary.uploader.destroy(blog.imagePublicId);
-    }
-
-    // Delete author image from Cloudinary
-    if (blog.authorImagePublicId) {
-      await cloudinary.uploader.destroy(blog.authorImagePublicId);
-    }
-
-    // Delete blog from DB
-    await prisma.blog.delete({ where: { id } });
 
     res.status(200).json({ success: true, message: "Deleted successfully" });
   } catch (error) {
     console.error("Delete blog error:", error);
-    res.status(500).json({ success: false, message: "Failed to delete blog" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete blog(s)" });
   }
 };
 
