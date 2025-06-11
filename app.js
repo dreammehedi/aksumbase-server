@@ -74,6 +74,7 @@ const allowedOrigins = [
   "https://aksumbase.com", // Production
   "https://www.aksumbase.com", // Production with www
   "https://aksumbase-frontend.vercel.app",
+  "https://aksumbase-frontend-qsfw.vercel.app"
 ];
 
 app.use(
