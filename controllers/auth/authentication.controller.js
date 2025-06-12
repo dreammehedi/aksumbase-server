@@ -571,7 +571,7 @@ export const googleLogin = async (req, res) => {
     const role = req.user.role || "user";
 
     // Redirect to the frontend with token and role in the query string
-    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/google/callback?token=${token}&role=${role}`;
+    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}`;
     res.redirect(frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
