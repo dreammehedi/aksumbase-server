@@ -3,14 +3,19 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import session from "express-session";
 import path from "path";
 import { fileURLToPath } from "url";
-
 // Import routes
-import auditlogRoutes from "./routes/auditlog.route.js";
-import authRoutes from "./routes/auth.route.js";
-import AuthenticationRouter from "./routes/auth/authentication.route.js";
-import emailRoutes from "./routes/email.route.js";
+import passport from "./config/passport.config.js";
+import reminderEmailJob from "./helper/reminderEmailJob.js";
+import roleExpiryChecker from "./helper/roleExpiryChecker.js";
+import {
+  AuthenticationRouter,
+  AuthRouter,
+} from "./routes/auth/authentication.route.js";
+import RolePackageRouter from "./routes/auth/rolePackage.route.js";
+import UserRoleRouter from "./routes/auth/userRole.route.js";
 import DevelopmentPlatformRouter from "./routes/home/developmentPlatform.route.js";
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
 import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
@@ -19,11 +24,7 @@ import BlogRouter from "./routes/other/blog.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
 import OtherRouter from "./routes/other/other.route.js";
 import SellerResourcesRouter from "./routes/other/sellerResources.route.js";
-import postRoutes from "./routes/post.route.js";
 import PropertyRouter from "./routes/property/property.route.js";
-import reviewRoutes from "./routes/review.route.js";
-import testRoutes from "./routes/test.route.js";
-import userRoutes from "./routes/user.route.js";
 
 // Configure environment variables
 dotenv.config();
@@ -69,6 +70,7 @@ const allowedOrigins = [
   "http://localhost:5173", // Development
   "https://aksumbase.com", // Production
   "https://www.aksumbase.com", // Production with www
+  "https://aksumbase-frontend.vercel.app",
   "https://aksumbase-frontend-qsfw.vercel.app"
 ];
 
@@ -92,6 +94,16 @@ app.use(
     maxAge: 86400, // 24 hours
   })
 );
+// Passport middleware
+app.use(
+  session({
+    secret: process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Home route
 app.get("/", (req, res) => {
@@ -110,13 +122,11 @@ app.get("/health", (req, res) => {
 });
 
 // API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/posts", postRoutes);
-app.use("/api/auditlog", auditlogRoutes);
-app.use("/api/test", testRoutes);
-app.use("/api/email", emailRoutes);
-app.use("/api/reviews", reviewRoutes);
+// app.use("/api/users", userRoutes);
+// app.use("/api/auditlog", auditlogRoutes);
+// app.use("/api/test", testRoutes);
+// app.use("/api/email", emailRoutes);
+// app.use("/api/reviews", reviewRoutes);
 
 // routes
 app.use("/api", HeroBannerRouter);
@@ -125,9 +135,15 @@ app.use("/api", MortageToolsRouter);
 app.use("/api", OtherRouter);
 app.use("/api", BlogRouter);
 app.use("/api/authentication", AuthenticationRouter);
+app.use("/api/auth", AuthRouter);
 app.use("/api", EmailConfigurationRouter);
 app.use("/api", SellerResourcesRouter);
 app.use("/api", DevelopmentPlatformRouter);
 app.use("/api", PropertyRouter);
+app.use("/api", RolePackageRouter);
+app.use("/api", UserRoleRouter);
 
+// Start cron job
+roleExpiryChecker();
+reminderEmailJob();
 export default app;

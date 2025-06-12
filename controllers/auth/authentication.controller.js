@@ -561,3 +561,22 @@ export const getUserProfile = async (req, res) => {
     });
   }
 };
+
+export const googleLogin = async (req, res) => {
+  try {
+    const token = jwt.sign({ email: newUser.email }, process.env.JWT_SECRET, {
+      expiresIn: "3d",
+    });
+
+    const role = req.user.role || "user";
+
+    // Redirect to the frontend with token and role in the query string
+    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/google/callback?token=${token}&role=${role}`;
+    res.redirect(frontendURL);
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.redirect(
+      "https://aksumbase-frontend-qsfw.vercel.app/login?error=login_failed"
+    );
+  }
+};

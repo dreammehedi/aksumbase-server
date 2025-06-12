@@ -1,9 +1,11 @@
 import express from "express";
+import passport from "../../config/passport.config.js";
 import { upload } from "../../config/upload.js";
 import {
   changePassword,
   forgotPassword,
   getUserProfile,
+  googleLogin,
   loginUser,
   logout,
   registerUser,
@@ -12,6 +14,7 @@ import {
 } from "../../controllers/auth/authentication.controller.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
 const AuthenticationRouter = express.Router();
+const AuthRouter = express.Router();
 
 AuthenticationRouter.get("/user-profile/:email", getUserProfile);
 AuthenticationRouter.post("/user-register", upload.none(), registerUser);
@@ -31,4 +34,20 @@ AuthenticationRouter.put(
   upload.none(),
   changePassword
 );
-export default AuthenticationRouter;
+
+// Initiate Google login
+AuthRouter.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+// Handle Google callback
+AuthRouter.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "https://aksumbase-frontend-qsfw.vercel.app/login",
+  }),
+  googleLogin
+);
+
+export { AuthenticationRouter, AuthRouter };
