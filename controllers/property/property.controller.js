@@ -52,6 +52,58 @@ export const getProperty = async (req, res) => {
 //   }
 // };
 
+export const searchProperty = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const search = (req.query.search || "").toLowerCase();
+    const { type } = req.query;
+
+    const where = {
+      AND: [
+        type ? { type: { equals: type } } : {}, // match type exactly (e.g. "buy" or "rent")
+        search
+          ? {
+              OR: [
+                { city: { contains: search, mode: "insensitive" } },
+                { address: { contains: search, mode: "insensitive" } },
+                { zip: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {},
+      ],
+    };
+
+    const data = await prisma.property.findMany({
+      where,
+      skip: Number(skip),
+      take: Number(limit),
+      orderBy: { createdAt: "desc" },
+      select: {
+        zip: true,
+        city: true,
+        address: true,
+      },
+    });
+
+    const total = await prisma.property.count({ where });
+
+    res.status(200).json({
+      success: true,
+      data,
+      pagination: {
+        total,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
+    });
+  } catch (error) {
+    console.error("Get property error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch properties", error });
+  }
+};
+
 export const property = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};

@@ -6,6 +6,7 @@ import {
   getProperty,
   getPropertyBySlug,
   property,
+  searchProperty,
   updateProperty,
 } from "../../controllers/property/property.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
@@ -15,6 +16,7 @@ const PropertyRouter = express.Router();
 
 PropertyRouter.get("/get-property", getProperty);
 PropertyRouter.get("/property", paginationMiddleware, property);
+PropertyRouter.get("/search-property", paginationMiddleware, searchProperty);
 PropertyRouter.post(
   "/property",
   verifyToken,
