@@ -36,6 +36,7 @@ model Notification {
 model RolePackage {
   id             String           @id @default(auto()) @map("_id") @db.ObjectId
   name           String           @unique
+  roleName       String           
   price          Float
   durationDays   Int              // Package duration in days
   features       String[]
@@ -43,6 +44,14 @@ model RolePackage {
   updatedAt      DateTime         @updatedAt
   userRoles      UserRole[]
 }
+
+enum RoleName {
+  homeowner_landlord
+  agent_broker
+  loan_officer
+  property_manager
+}
+
 
 model UserRole {
   id             String           @id @default(auto()) @map("_id") @db.ObjectId

@@ -1,16 +1,29 @@
 import prisma from "../../lib/prisma.js";
 
-// Create Role Package (Admin)
 export const createRolePackage = async (req, res) => {
   try {
-    const { name, price, durationDays, features } = req.body;
+    const { name, price, durationDays, features, roleName } = req.body;
+
+    let featuresArray;
+
+    if (typeof features === "string") {
+      // Try parsing JSON string or comma-separated string
+      try {
+        featuresArray = JSON.parse(features); // For JSON string: '["a", "b"]'
+      } catch {
+        featuresArray = features.split(",").map((f) => f.trim()); // Fallback to comma-separated
+      }
+    } else {
+      featuresArray = features;
+    }
 
     const newPackage = await prisma.rolePackage.create({
       data: {
         name,
-        price,
-        durationDays,
-        features,
+        price: parseFloat(price),
+        durationDays: parseInt(durationDays),
+        features: featuresArray,
+        roleName,
       },
     });
 
