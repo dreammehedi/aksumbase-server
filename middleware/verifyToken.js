@@ -7,15 +7,14 @@ export const verifyToken = (req, res, next) => {
   if (!token) {
     return next(createError(401, "You are not authenticated!"));
   }
-
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
+      console.log(err, "erro");
       return next(createError(403, "Token is not valid!"));
     }
 
     req.userId = decoded.id;
     req.role = decoded.role;
-    console.log(decoded);
     next();
   });
 };

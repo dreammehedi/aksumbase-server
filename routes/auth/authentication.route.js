@@ -9,8 +9,11 @@ import {
   loginUser,
   logout,
   registerUser,
+  remove2FA,
   resetPassword,
+  setup2FA,
   updateProfile,
+  verify2FA,
 } from "../../controllers/auth/authentication.controller.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
 const AuthenticationRouter = express.Router();
@@ -19,6 +22,9 @@ const AuthRouter = express.Router();
 AuthenticationRouter.get("/user-profile/:email", getUserProfile);
 AuthenticationRouter.post("/user-register", upload.none(), registerUser);
 AuthenticationRouter.post("/login", upload.none(), loginUser);
+AuthenticationRouter.post("/setup-2fa", verifyToken, upload.none(), setup2FA);
+AuthenticationRouter.post("/remove-2fa", verifyToken, upload.none(), remove2FA);
+AuthenticationRouter.post("/verify-2fa", upload.none(), verify2FA);
 AuthenticationRouter.post("/forgot-password", upload.none(), forgotPassword);
 AuthenticationRouter.post("/reset-password", upload.none(), resetPassword);
 AuthenticationRouter.post("/logout", upload.none(), verifyToken, logout);
