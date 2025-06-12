@@ -133,6 +133,9 @@ export const property = async (req, res) => {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
             { slug: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
+            { zip: { contains: search, mode: "insensitive" } },
           ],
         },
         city ? { city: { equals: city, mode: "insensitive" } } : {},
