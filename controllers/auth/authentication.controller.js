@@ -1,12 +1,12 @@
+dotenv.config();
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
-dotenv.config();
-
-import { PrismaClient } from "@prisma/client";
+import speakeasy from "speakeasy";
 import decrypt from "../../helper/decrypt.js";
-
 const prisma = new PrismaClient();
 
 export const registerUser = async (req, res) => {
@@ -98,85 +98,86 @@ export const registerUser = async (req, res) => {
   }
 };
 
-export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+// export const loginUser = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
 
-    // Validate required fields
-    const missingFields = [];
-    if (!email) missingFields.push("Email");
-    if (!password) missingFields.push("Password");
+//     // Validate required fields
+//     const missingFields = [];
+//     if (!email) missingFields.push("Email");
+//     if (!password) missingFields.push("Password");
 
-    if (missingFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `${missingFields.join(", ")} field(s) are required.`,
-      });
-    }
+//     if (missingFields.length > 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: `${missingFields.join(", ")} field(s) are required.`,
+//       });
+//     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+//     // Find user by email
+//     const user = await prisma.user.findUnique({
+//       where: { email },
+//     });
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found. Please register first.",
-      });
-    }
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found. Please register first.",
+//       });
+//     }
 
-    // Check if user is active
-    if (user.status !== "active") {
-      return res.status(403).json({
-        success: false,
-        message: `Account is ${user.status}. Please contact support.`,
-      });
-    }
+//     // Check if user is active
+//     if (user.status !== "active") {
+//       return res.status(403).json({
+//         success: false,
+//         message: `Account is ${user.status}. Please contact support.`,
+//       });
+//     }
 
-    // Password check (admin email gets plain check)
-    let isMatch;
-    if (user.email === "admin@gmail.com") {
-      isMatch = password === user.password;
-    } else {
-      isMatch = bcrypt.compareSync(password, user.password);
-    }
+//     // Password check (admin email gets plain check)
+//     let isMatch;
+//     if (user.email === "admin@gmail.com") {
+//       isMatch = password === user.password;
+//     } else {
+//       isMatch = bcrypt.compareSync(password, user.password);
+//     }
 
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password.",
-      });
-    }
+//     if (!isMatch) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Invalid email or password.",
+//       });
+//     }
 
-    // Generate JWT token
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "3d",
-    });
+//     // Generate JWT token
+//     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+//       expiresIn: "3d",
+//     });
 
-    // Send response excluding sensitive info
-    const { id, username, createdAt, role, status } = user;
-    res.status(200).json({
-      success: true,
-      message: "Login successful.",
-      payload: {
-        _id: id,
-        name: username,
-        email: user.email,
-        token,
-        role,
-        status,
-        createdAt,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "An error occurred during login.",
-    });
-  }
-};
+//     // Send response excluding sensitive info
+//     const { id, username, createdAt, role, status } = user;
+//     res.status(200).json({
+//       success: true,
+//       message: "Login successful.",
+//       payload: {
+//         _id: id,
+//         name: username,
+//         email: user.email,
+//         token,
+//         role,
+//         status,
+//         createdAt,
+//       },
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       success: false,
+//       message: error.message || "An error occurred during login.",
+//     });
+//   }
+// };
+
 export const sendResetCode = async (email, code) => {
   const emailConfig = await prisma.emailConfiguration.findFirst();
 
@@ -221,6 +222,47 @@ export const sendResetCode = async (email, code) => {
     throw new Error("Could not send reset code email.");
   }
 };
+
+async function sendOtpEmail(email, otp) {
+  const emailConfig = await prisma.emailConfiguration.findFirst();
+
+  if (!emailConfig) {
+    throw new Error("Email configuration not found.");
+  }
+
+  const decryptedPassword = decrypt(emailConfig.emailPassword);
+  if (!decryptedPassword) {
+    throw new Error("Failed to decrypt email password");
+  }
+
+  const mailOptions = {
+    from: emailConfig.emailUserName,
+    to: email,
+    subject: "Your Login OTP Code",
+    text: `Your one-time login code is: ${otp}. It will expire in 5 minutes.`,
+    html: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <h2 style="color: #4C924D;">Your Login Verification Code</h2>
+      <p>Hello,</p>
+      <p>Your one-time login code is:</p>
+      <div style="font-size: 24px; font-weight: bold; margin: 20px 0; color: #333; text-align: center;">
+        ${otp}
+      </div>
+      <p>This code will expire in 5 minutes. If you didn’t request this, please ignore this email.</p>
+      <p>Thanks,<br>The AksumBase Team</p>
+    </div>
+  `,
+  };
+
+  const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: emailConfig.emailAddress,
+      pass: decryptedPassword,
+    },
+  });
+  await transporter.sendMail(mailOptions);
+}
 
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
@@ -571,7 +613,7 @@ export const googleLogin = async (req, res) => {
     const role = req.user.role || "user";
 
     // Redirect to the frontend with token and role in the query string
-    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/google/callback?token=${token}&role=${role}`;
+    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}`;
     res.redirect(frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
@@ -579,4 +621,183 @@ export const googleLogin = async (req, res) => {
       "https://aksumbase-frontend-qsfw.vercel.app/login?error=login_failed"
     );
   }
+};
+
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res
+        .status(400)
+        .json({ message: "Email and password are required." });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user)
+      return res
+        .status(404)
+        .json({ message: "User not found. Please register first." });
+
+    if (user.status !== "active")
+      return res.status(403).json({ message: `Account is ${user.status}.` });
+
+    const isAdmin = email === "admin@gmail.com";
+    const passwordMatch = isAdmin
+      ? password === user.password
+      : await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch)
+      return res.status(401).json({ message: "Invalid email or password." });
+
+    // 2FA check
+    if (user.isTwoFactorEnabled) {
+      // Generate a random 6-digit OTP
+      const otp = crypto.randomInt(100000, 999999).toString();
+
+      // Save OTP and expiry (e.g. 5 mins) in DB
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorTempToken: otp,
+          twoFactorTempExp: new Date(Date.now() + 5 * 60 * 1000),
+        },
+      });
+
+      // Send OTP to user's email
+      await sendOtpEmail(user.email, otp);
+
+      return res.status(200).json({
+        success: true,
+        step: "2fa",
+        message: "OTP sent to your email. Please verify.",
+        email: user.email,
+      });
+    }
+
+    // If 2FA not enabled, generate JWT as usual
+    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "3d",
+    });
+
+    const { id, username, role, status, createdAt } = user;
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      payload: {
+        _id: id,
+        name: username,
+        email,
+        token: accessToken,
+        role,
+        status,
+        createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Login Error:", error);
+    res
+      .status(500)
+      .json({ message: error.message || "Server error during login." });
+  }
+};
+
+export const verify2FA = async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({ message: "Email and OTP are required" });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user)
+    return res
+      .status(404)
+      .json({ message: "User not found. Please register first." });
+
+  if (user.status !== "active")
+    return res.status(403).json({ message: `Account is ${user.status}.` });
+
+  if (!user.twoFactorTempToken) {
+    return res.status(400).json({ message: "Invalid request" });
+  }
+  // Check OTP match and expiration
+  if (
+    user.twoFactorTempToken !== otp ||
+    new Date() > new Date(user.twoFactorTempExp)
+  ) {
+    return res.status(401).json({ message: "Invalid or expired OTP" });
+  }
+
+  // Clear temp OTP fields
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { twoFactorTempToken: null, twoFactorTempExp: null },
+  });
+
+  // Generate access token for final login
+  const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+    expiresIn: "3d",
+  });
+
+  const { id, username, role, status, createdAt } = user;
+
+  res.status(200).json({
+    success: true,
+    message: "Login successful.",
+    payload: {
+      _id: id,
+      name: username,
+      email,
+      token: accessToken,
+      role,
+      status,
+      createdAt,
+    },
+  });
+};
+
+export const setup2FA = async (req, res) => {
+  const userId = req.userId; // safer than using body.id
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(404).json({ message: "User not found." });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      isTwoFactorEnabled: true,
+    },
+  });
+
+  res.json({ success: true, message: "Setup 2FA successful" });
+};
+
+export const remove2FA = async (req, res) => {
+  const userId = req.userId; // safer than using body.id
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(404).json({ message: "User not found." });
+
+  const secret = speakeasy.generateSecret({
+    name: `Aksumbase (${user.email})`,
+  });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      isTwoFactorEnabled: false,
+      twoFactorTempToken: null,
+      twoFactorTempExp: null,
+    },
+  });
+
+  res.json({ success: true, message: "Remove 2FA successful" });
 };
