@@ -16,6 +16,7 @@ import {
 } from "./routes/auth/authentication.route.js";
 import RolePackageRouter from "./routes/auth/rolePackage.route.js";
 import UserRoleRouter from "./routes/auth/userRole.route.js";
+import DashboardRouter from "./routes/dashboard/dashboard.route.js";
 import DevelopmentPlatformRouter from "./routes/home/developmentPlatform.route.js";
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
 import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
@@ -71,7 +72,7 @@ const allowedOrigins = [
   "https://aksumbase.com", // Production
   "https://www.aksumbase.com", // Production with www
   "https://aksumbase-frontend.vercel.app",
-  "https://aksumbase-frontend-qsfw.vercel.app"
+  "https://aksumbase-frontend-qsfw.vercel.app",
 ];
 
 app.use(
@@ -142,6 +143,7 @@ app.use("/api", DevelopmentPlatformRouter);
 app.use("/api", PropertyRouter);
 app.use("/api", RolePackageRouter);
 app.use("/api", UserRoleRouter);
+app.use("/api", DashboardRouter);
 
 // Start cron job
 roleExpiryChecker();
