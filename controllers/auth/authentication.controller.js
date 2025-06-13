@@ -87,6 +87,7 @@ export const registerUser = async (req, res) => {
         role: newUser.role,
         token,
         createdAt: newUser.createdAt,
+        isTwoFactorEnabled: newUser.isTwoFactorEnabled,
       },
     });
   } catch (error) {
@@ -587,7 +588,14 @@ export const getUserProfile = async (req, res) => {
     }
 
     // Remove password before sending
-    const { password, resetCode, resetCodeExpiration, ...otherData } = user;
+    const {
+      password,
+      resetCode,
+      resetCodeExpiration,
+      twoFactorTempToken,
+      twoFactorTempExp,
+      ...otherData
+    } = user;
 
     res.status(200).json({
       success: true,
@@ -679,7 +687,7 @@ export const loginUser = async (req, res) => {
       expiresIn: "3d",
     });
 
-    const { id, username, role, status, createdAt } = user;
+    const { id, username, role, status, createdAt, isTwoFactorEnabled } = user;
 
     res.status(200).json({
       success: true,
@@ -692,6 +700,7 @@ export const loginUser = async (req, res) => {
         role,
         status,
         createdAt,
+        isTwoFactorEnabled,
       },
     });
   } catch (error) {
