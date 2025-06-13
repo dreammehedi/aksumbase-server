@@ -191,6 +191,8 @@ export const sendResetCode = async (email, code) => {
     throw new Error("Failed to decrypt email password");
   }
 
+  console.log(decryptedPassword, "decryptedPassword");
+
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {
@@ -198,6 +200,8 @@ export const sendResetCode = async (email, code) => {
       pass: decryptedPassword,
     },
   });
+
+  console.log(emailConfig?.emailAddress);
 
   const mailOptions = {
     from: emailConfig.emailUserName,
@@ -220,6 +224,7 @@ export const sendResetCode = async (email, code) => {
   try {
     await transporter.sendMail(mailOptions);
   } catch (error) {
+    console.log(error, "error");
     throw new Error("Could not send reset code email.");
   }
 };

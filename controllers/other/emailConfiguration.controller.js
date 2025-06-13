@@ -21,8 +21,9 @@ export const getEmailConfiguration = async (req, res) => {
 // UPDATE a configuration (PUT with ID in body)
 export const updateEmailConfiguration = async (req, res) => {
   try {
-    const { id, emailPassword, ...otherFields } = req.body;
+    const { id, emailPassword, emailPort, ...otherFields } = req.body;
 
+    console.log(emailPort, "email port");
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -48,6 +49,7 @@ export const updateEmailConfiguration = async (req, res) => {
     if (emailPassword) {
       updateData.emailPassword = encrypt(emailPassword);
     }
+    updateData.emailPort = parseInt(emailPort);
 
     // Update using Prisma
     await prisma.emailConfiguration.update({
