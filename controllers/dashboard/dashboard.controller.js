@@ -52,3 +52,44 @@ export const getAdminDashboardOverview = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getAllUsersByAdmin = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const search = req.query.search || "";
+    const role = req.query.role || null; // e.g., 'admin', 'user', 'moderator'
+
+    const where = {
+      AND: [
+        role ? { role } : {}, // only filter by role if it's provided
+        {
+          OR: [
+            { username: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      ],
+    };
+
+    const data = await prisma.user.findMany({
+      where,
+      skip: Number(skip),
+      take: Number(limit),
+      orderBy: { createdAt: "desc" },
+    });
+
+    const total = await prisma.user.count({ where });
+
+    res.status(200).json({
+      success: true,
+      data,
+      pagination: { total, skip: Number(skip), limit: Number(limit) },
+    });
+  } catch (error) {
+    console.error("Get all users error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch all users",
+    });
+  }
+};
