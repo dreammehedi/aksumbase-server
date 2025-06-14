@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { createError } from "../utils/error.js";
 
 export const verifyToken = (req, res, next) => {
-  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+  const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
     return next(createError(401, "You are not authenticated!"));
@@ -12,8 +12,9 @@ export const verifyToken = (req, res, next) => {
       console.log(err, "erro");
       return next(createError(403, "Token is not valid!"));
     }
-
-    req.userId = decoded.id;
+    console.log(decoded, "decoded token");
+    req.userId = decoded.userId;
+    req.email = decoded.email;
     req.role = decoded.role;
     next();
   });

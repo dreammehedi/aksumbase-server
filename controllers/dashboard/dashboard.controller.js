@@ -61,7 +61,7 @@ export const getAllUsersByAdmin = async (req, res) => {
 
     const where = {
       AND: [
-        role ? { role } : {}, // only filter by role if it's provided
+        role ? { role } : {},
         {
           OR: [
             { username: { contains: search, mode: "insensitive" } },
@@ -76,6 +76,15 @@ export const getAllUsersByAdmin = async (req, res) => {
       skip: Number(skip),
       take: Number(limit),
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     const total = await prisma.user.count({ where });
@@ -90,6 +99,71 @@ export const getAllUsersByAdmin = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch all users",
+    });
+  }
+};
+
+export const getAllUsersSessionByAdmin = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const search = req.query.search || "";
+    const role = req.query.role || null;
+
+    // Build the user filtering condition
+    const userWhere = {
+      AND: [
+        role ? { role } : {},
+        {
+          NOT: { role: "admin" }, // Exclude admin users
+        },
+        {
+          OR: [
+            { username: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      ],
+    };
+
+    // Find sessions including user data filtered by userWhere
+    const data = await prisma.session.findMany({
+      where: {
+        user: userWhere,
+      },
+      skip: Number(skip),
+      take: Number(limit),
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    // Count total sessions for users that match filters
+    const total = await prisma.session.count({
+      where: {
+        user: userWhere,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data,
+      pagination: { total, skip: Number(skip), limit: Number(limit) },
+    });
+  } catch (error) {
+    console.error("Get all user sessions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user sessions",
     });
   }
 };

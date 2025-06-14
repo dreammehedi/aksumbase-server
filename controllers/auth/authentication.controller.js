@@ -9,14 +9,14 @@ import speakeasy from "speakeasy";
 import decrypt from "../../helper/decrypt.js";
 const prisma = new PrismaClient();
 
+// --------------------- REGISTER ---------------------
 export const registerUser = async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
-    // Validate required fields
     const missingFields = [];
     if (!email) missingFields.push("Email");
-    if (!username) missingFields.push("User name");
+    if (!username) missingFields.push("Username");
     if (!password) missingFields.push("Password");
 
     if (missingFields.length > 0) {
@@ -33,7 +33,7 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Check if user already exists by email or username
+    // Check for existing user
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ email }],
@@ -47,11 +47,8 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Hash password
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(password, salt);
+    const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
 
-    // Create new user
     const newUser = await prisma.user.create({
       data: {
         email,
@@ -66,15 +63,36 @@ export const registerUser = async (req, res) => {
       },
     });
 
-    // Generate JWT token
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+    // Step 1: Create session
+    const session = await prisma.session.create({
+      data: {
+        userId: newUser.id,
+        token: "temp",
+        deviceInfo,
+        expiresAt,
+      },
+    });
+
+    // Step 2: Generate JWT with session ID
     const token = jwt.sign(
-      { userId: newUser._id, email: newUser.email },
+      {
+        userId: newUser.id,
+        email: newUser.email,
+        sessionId: session.id,
+        token: newUser.token,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "3d" }
     );
 
-    // You can either return the token directly or store it if you have a token field
-    // But since your schema doesn't have a `token` field, just return it in the response
+    // Step 3: Update session with token
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { token },
+    });
 
     res.status(201).json({
       success: true,
@@ -83,15 +101,15 @@ export const registerUser = async (req, res) => {
         _id: newUser.id,
         email: newUser.email,
         username: newUser.username,
-        status: newUser.status,
         role: newUser.role,
+        status: newUser.status,
         token,
         createdAt: newUser.createdAt,
         isTwoFactorEnabled: newUser.isTwoFactorEnabled,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Register Error:", error);
     res.status(500).json({
       success: false,
       message: error.message || "An error occurred during registration.",
@@ -99,85 +117,147 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// export const loginUser = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
+// --------------------- LOGIN ---------------------
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res
+        .status(400)
+        .json({ message: "Email and password are required." });
 
-//     // Validate required fields
-//     const missingFields = [];
-//     if (!email) missingFields.push("Email");
-//     if (!password) missingFields.push("Password");
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ message: "User not found." });
 
-//     if (missingFields.length > 0) {
-//       return res.status(400).json({
-//         success: false,
-//         message: `${missingFields.join(", ")} field(s) are required.`,
-//       });
-//     }
+    if (user.status !== "active")
+      return res.status(403).json({ message: `Account is ${user.status}.` });
 
-//     // Find user by email
-//     const user = await prisma.user.findUnique({
-//       where: { email },
-//     });
+    const isAdmin = email === "admin@gmail.com";
+    const passwordMatch = isAdmin
+      ? password === user.password
+      : await bcrypt.compare(password, user.password);
 
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found. Please register first.",
-//       });
-//     }
+    if (!passwordMatch)
+      return res.status(401).json({ message: "Invalid email or password." });
 
-//     // Check if user is active
-//     if (user.status !== "active") {
-//       return res.status(403).json({
-//         success: false,
-//         message: `Account is ${user.status}. Please contact support.`,
-//       });
-//     }
+    // 2FA
+    if (user.isTwoFactorEnabled) {
+      const otp = crypto.randomInt(100000, 999999).toString();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorTempToken: otp,
+          twoFactorTempExp: new Date(Date.now() + 5 * 60 * 1000),
+        },
+      });
 
-//     // Password check (admin email gets plain check)
-//     let isMatch;
-//     if (user.email === "admin@gmail.com") {
-//       isMatch = password === user.password;
-//     } else {
-//       isMatch = bcrypt.compareSync(password, user.password);
-//     }
+      await sendOtpEmail(user.email, otp);
 
-//     if (!isMatch) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Invalid email or password.",
-//       });
-//     }
+      return res.status(200).json({
+        success: true,
+        step: "2fa",
+        message: "OTP sent to your email. Please verify.",
+        email: user.email,
+      });
+    }
 
-//     // Generate JWT token
-//     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-//       expiresIn: "3d",
-//     });
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
-//     // Send response excluding sensitive info
-//     const { id, username, createdAt, role, status } = user;
-//     res.status(200).json({
-//       success: true,
-//       message: "Login successful.",
-//       payload: {
-//         _id: id,
-//         name: username,
-//         email: user.email,
-//         token,
-//         role,
-//         status,
-//         createdAt,
-//       },
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({
-//       success: false,
-//       message: error.message || "An error occurred during login.",
-//     });
-//   }
-// };
+    // Step 1: Create session
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        token: "temp",
+        deviceInfo,
+        expiresAt,
+      },
+    });
+
+    // Step 2: Generate token with sessionId
+    const jwtToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        sessionId: session.id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "3d" }
+    );
+
+    // Step 3: Update session with real token
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { token: jwtToken },
+    });
+
+    const { id, username, role, status, createdAt, isTwoFactorEnabled } = user;
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      payload: {
+        _id: id,
+        name: username,
+        email,
+        role,
+        status,
+        createdAt,
+        isTwoFactorEnabled,
+        token: jwtToken,
+      },
+    });
+  } catch (error) {
+    console.error("Login Error:", error);
+    res
+      .status(500)
+      .json({ message: error.message || "Server error during login." });
+  }
+};
+
+// --------------------- LOGOUT ---------------------
+export const logout = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized. No token provided.",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const session = await prisma.session.findUnique({
+      where: { id: decoded.sessionId },
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found.",
+      });
+    }
+
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { isActive: false },
+    });
+
+    res.clearCookie("token"); // Optional if you're using cookies
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully.",
+    });
+  } catch (error) {
+    console.error("Logout Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Logout failed.",
+    });
+  }
+};
 
 export const sendResetCode = async (email, code) => {
   const emailConfig = await prisma.emailConfiguration.findFirst();
@@ -200,8 +280,6 @@ export const sendResetCode = async (email, code) => {
       pass: decryptedPassword,
     },
   });
-
-  console.log(emailConfig?.emailAddress);
 
   const mailOptions = {
     from: emailConfig.emailUserName,
@@ -333,10 +411,10 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 6 characters long.",
+        message: "Password must be at least 8 characters long.",
       });
     }
 
@@ -393,39 +471,6 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || "An error occurred during password reset.",
-    });
-  }
-};
-export const logout = async (req, res) => {
-  try {
-    const userEmail = req.body?.email; // Assumes middleware adds `req.user`
-    if (!userEmail) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized. No user found in request.",
-      });
-    }
-
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found. Please register first.",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Logged out successfully.",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Logout failed.",
     });
   }
 };
@@ -633,86 +678,6 @@ export const googleLogin = async (req, res) => {
     res.redirect(
       "https://aksumbase-frontend-qsfw.vercel.app/login?error=login_failed"
     );
-  }
-};
-
-export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password)
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user)
-      return res
-        .status(404)
-        .json({ message: "User not found. Please register first." });
-
-    if (user.status !== "active")
-      return res.status(403).json({ message: `Account is ${user.status}.` });
-
-    const isAdmin = email === "admin@gmail.com";
-    const passwordMatch = isAdmin
-      ? password === user.password
-      : await bcrypt.compare(password, user.password);
-
-    if (!passwordMatch)
-      return res.status(401).json({ message: "Invalid email or password." });
-
-    // 2FA check
-    if (user.isTwoFactorEnabled) {
-      // Generate a random 6-digit OTP
-      const otp = crypto.randomInt(100000, 999999).toString();
-
-      // Save OTP and expiry (e.g. 5 mins) in DB
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          twoFactorTempToken: otp,
-          twoFactorTempExp: new Date(Date.now() + 5 * 60 * 1000),
-        },
-      });
-
-      // Send OTP to user's email
-      await sendOtpEmail(user.email, otp);
-
-      return res.status(200).json({
-        success: true,
-        step: "2fa",
-        message: "OTP sent to your email. Please verify.",
-        email: user.email,
-      });
-    }
-
-    // If 2FA not enabled, generate JWT as usual
-    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "3d",
-    });
-
-    const { id, username, role, status, createdAt, isTwoFactorEnabled } = user;
-
-    res.status(200).json({
-      success: true,
-      message: "Login successful.",
-      payload: {
-        _id: id,
-        name: username,
-        email,
-        token: accessToken,
-        role,
-        status,
-        createdAt,
-        isTwoFactorEnabled,
-      },
-    });
-  } catch (error) {
-    console.error("Login Error:", error);
-    res
-      .status(500)
-      .json({ message: error.message || "Server error during login." });
   }
 };
 

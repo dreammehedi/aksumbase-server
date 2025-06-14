@@ -2,6 +2,7 @@ import express from "express";
 import {
   getAdminDashboardOverview,
   getAllUsersByAdmin,
+  getAllUsersSessionByAdmin,
 } from "../../controllers/dashboard/dashboard.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -22,6 +23,14 @@ DashboardRouter.get(
   verifyAdminOld,
   paginationMiddleware,
   getAllUsersByAdmin
+);
+
+DashboardRouter.get(
+  "/admin/all-users-session",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getAllUsersSessionByAdmin
 );
 
 export default DashboardRouter;
