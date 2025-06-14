@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 export const getProperty = async (req, res) => {
   try {
     const data = await prisma.property.findMany({
+      where: { status: "approved" },
       orderBy: { createdAt: "desc" },
     });
     res.status(200).json({ success: true, data });
@@ -61,6 +62,7 @@ export const searchProperty = async (req, res) => {
     const where = {
       AND: [
         type ? { type: { equals: type } } : {}, // match type exactly (e.g. "buy" or "rent")
+
         search
           ? {
               OR: [
@@ -129,6 +131,7 @@ export const property = async (req, res) => {
 
     const where = {
       AND: [
+        { status: { equals: "approved" } },
         {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
@@ -544,7 +547,7 @@ export const getPropertyBySlug = async (req, res) => {
 
     // Update the visit count
     await prisma.property.update({
-      where: { slug },
+      where: { slug, status: "approved" },
       data: {
         views: {
           increment: 1, // increment visitCount by 1
