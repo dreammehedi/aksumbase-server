@@ -5,8 +5,10 @@ import {
   deleteProperty,
   getProperty,
   getPropertyBySlug,
+  getRecentPropertyViews,
   property,
   searchProperty,
+  trackPropertyView,
   updateProperty,
 } from "../../controllers/property/property.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
@@ -40,4 +42,17 @@ PropertyRouter.delete(
 );
 
 PropertyRouter.get("/property-details/:slug", getPropertyBySlug);
+
+PropertyRouter.post(
+  "/property/track-view",
+  verifyToken,
+  upload.none(),
+  trackPropertyView
+);
+PropertyRouter.get(
+  "/property/recent-views/:userId",
+  verifyToken,
+  getRecentPropertyViews
+);
+
 export default PropertyRouter;

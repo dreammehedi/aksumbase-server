@@ -563,3 +563,68 @@ export const getPropertyBySlug = async (req, res) => {
       .json({ success: false, message: "Failed to fetch property" });
   }
 };
+
+export const trackPropertyView = async (req, res) => {
+  const { userId, propertyId } = req.body;
+
+  // Validate inputs
+  if (!userId || !propertyId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "userId and propertyId are required" });
+  }
+
+  const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
+  if (!isValidObjectId(userId) || !isValidObjectId(propertyId)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid ID format" });
+  }
+
+  try {
+    // Upsert (update timestamp if already viewed)
+    const view = await prisma.propertyView.upsert({
+      where: {
+        userId_propertyId: { userId, propertyId },
+      },
+      update: {
+        viewedAt: new Date(),
+      },
+      create: {
+        userId,
+        propertyId,
+      },
+    });
+
+    res
+      .status(200)
+      .json({ success: true, message: "View tracked", data: view });
+  } catch (error) {
+    console.error("Track view error:", error);
+    res.status(500).json({ success: false, message: "Failed to track view" });
+  }
+};
+
+export const getRecentPropertyViews = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId || !/^[a-f\d]{24}$/i.test(userId)) {
+    return res.status(400).json({ success: false, message: "Invalid userId" });
+  }
+
+  try {
+    const recentViews = await prisma.propertyView.findMany({
+      where: { userId },
+      orderBy: { viewedAt: "desc" },
+      include: { property: true },
+      take: 10, // Optional: limit to latest 10
+    });
+
+    res.status(200).json({ success: true, data: recentViews });
+  } catch (error) {
+    console.error("Get views error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch recent views" });
+  }
+};
