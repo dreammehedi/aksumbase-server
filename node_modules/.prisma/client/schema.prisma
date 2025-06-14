@@ -90,10 +90,11 @@ model User {
   userRoles     UserRole[]
   sessions      Session[]
 
-  property  Property[]
-  reviews   Review[]
-  auditLogs AuditLog[]
-  Bookmark  Bookmark[]
+  property     Property[]
+  reviews      Review[]
+  auditLogs    AuditLog[]
+  Bookmark     Bookmark[]
+  PropertyView PropertyView[]
 }
 
 enum Status {
@@ -358,8 +359,9 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  Review   Review[]
-  Bookmark Bookmark[]
+  Review       Review[]
+  Bookmark     Bookmark[]
+  PropertyView PropertyView[]
 }
 
 enum PropertyType {
@@ -408,4 +410,16 @@ model Bookmark {
   property Property @relation(fields: [propertyId], references: [id])
 
   @@unique([userId, propertyId])
+}
+
+model PropertyView {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  propertyId String   @db.ObjectId
+  viewedAt   DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, propertyId]) // Each property only once per user
 }
