@@ -4,17 +4,10 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/d/accelerate
 
-// generator client {
-//   provider      = "prisma-client-js"
-//   binaryTargets = ["native", "debian-openssl-3.0.x"]
-// }
-
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "darwin-arm64", "rhel-openssl-3.0.x","debian-openssl-3.0.x"]
+  binaryTargets = ["native", "darwin-arm64", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
-
-
 
 datasource db {
   provider = "mongodb"
@@ -34,15 +27,15 @@ model Notification {
 }
 
 model RolePackage {
-  id             String           @id @default(auto()) @map("_id") @db.ObjectId
-  name           String           @unique
-  roleName       String           
-  price          Float
-  durationDays   Int              // Package duration in days
-  features       String[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  userRoles      UserRole[]
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  name         String     @unique
+  roleName     String
+  price        Float
+  durationDays Int // Package duration in days
+  features     String[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  userRoles    UserRole[]
 }
 
 enum RoleName {
@@ -52,55 +45,56 @@ enum RoleName {
   property_manager
 }
 
-
 model UserRole {
-  id             String           @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String
-  rolePackageId  String
-  startDate      DateTime
-  endDate        DateTime
-  isActive       Boolean          @default(false)
-  isPaused       Boolean          @default(false)
-  isExpired      Boolean          @default(false)
-  createdAt      DateTime         @default(now())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String
+  rolePackageId String
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(false)
+  isPaused      Boolean  @default(false)
+  isExpired     Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
-  user           User             @relation(fields: [userId], references: [id])
-  rolePackage    RolePackage      @relation(fields: [rolePackageId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  rolePackage RolePackage @relation(fields: [rolePackageId], references: [id])
 }
 
 model User {
-  id                String         @id @default(auto()) @map("_id") @db.ObjectId
-  username          String         @unique
-  email             String         @unique
-  password          String
-  avatar            String?
-  avatarPublicId    String?
-  phone             String?
-  bio               String?
-  role              String         @default("user") // default role
-  isAdmin           Boolean        @default(false)
-  resetCode         String?
-  resetCodeExpiration DateTime?   @default(now())
-  status            String         @default("pending")
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  reputationScore   Int            @default(0)
-  reputationHistory Json?
-  flagged           Boolean?       @default(false)
-  flagReason        String?
-
-  isTwoFactorEnabled  Boolean        @default(false)
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  username            String
+  email               String    @unique
+  password            String
+  avatar              String?
+  avatarPublicId      String?
+  phone               String?
+  bio                 String?
+  role                String    @default("user") // could replace with enum if strict
+  isAdmin             Boolean   @default(false)
+  status              Status    @default(pending)
+  resetCode           String?
+  resetCodeExpiration DateTime? @default(now())
+  flagged             Boolean?  @default(false)
+  flagReason          String?
+  isTwoFactorEnabled  Boolean   @default(false)
   twoFactorTempToken  String?
   twoFactorTempExp    DateTime?
 
-  notifications     Notification[]
-  property          Property[]
-  reviews           Review[]
-  auditLogs         AuditLog[]
-  userRoles         UserRole[]     // relation to multiple role packages
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  reputationScore   Int      @default(0)
+  reputationHistory Json?
+
+  // Relations
+  notifications Notification[]
+  userRoles     UserRole[]
+  sessions      Session[]
+
+  property  Property[]
+  reviews   Review[]
+  auditLogs AuditLog[]
+  Bookmark  Bookmark[]
 }
-
-
 
 enum Status {
   active
@@ -108,22 +102,35 @@ enum Status {
   pending
 }
 
+model Session {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String    @db.ObjectId
+  token      String    @unique
+  deviceInfo String // user-agent + IP, etc.
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
+  user User @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+}
 
 model Review {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
   rating       Int
   comment      String
-  userId       String   @db.ObjectId
-  postId       String?  @db.ObjectId // Make postId optional
-  status       String   @default("pending") // pending, approved, rejected
-  reportedBy   String[] @default([]) // Array of user IDs who reported
+  userId       String    @db.ObjectId
+  postId       String?   @db.ObjectId // Make postId optional
+  status       String    @default("pending") // pending, approved, rejected
+  reportedBy   String[]  @default([]) // Array of user IDs who reported
   reportReason String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id])
-  property     Property?    @relation(fields: [postId], references: [id]) // Make post relation optional
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id])
+  property     Property? @relation(fields: [postId], references: [id]) // Make post relation optional
 }
 
 model AuditLog {
@@ -135,239 +142,226 @@ model AuditLog {
   userId    String?  @db.ObjectId
 }
 
-
-
 // hero banner
 model HeroBanner {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  title          String
-  description    String
-  image          String
-  imagePublicId  String?  // <-- Add this line
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String
+  image         String
+  imagePublicId String? // <-- Add this line
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
-
 
 // market trends
 model MarketTrends {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
-  name   String
-  price  Float
-  day    Int
-  status String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  price     Float
+  day       Int
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-
 
 // Mortgage Tools
 model MortageTools {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
-  name   String
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
   description String
-  ctaName String
-  ctaLink String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  ctaName     String
+  ctaLink     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
-
-
 
 // privacy policy
 model PrivacyPolicy {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // terms of use
 model TermsOfUse {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // buying guides
 model BuyingGuides {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // selling tips
 model SellingTips {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // market insights
 model MarketInsights {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // market analysis
 model MarketAnalysis {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // press
 model Press {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // blog
 model Blog {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  title            String
-  slug             String   @unique // for SEO-friendly URLs
-  shortDescription String
-  longDescription  String
-  image            String
-  imagePublicId    String?
-  category         String   // e.g., "Buying", "Selling", "Investment", etc.
-  categorySlug     String // for SEO-friendly URLs
-  tags             String[] // e.g., ["home buying", "mortgage", "first-time buyers"]
-  location         String?  // optional, if the blog is about a specific region
-  isFeatured       Boolean  @default(false)
-  authorName       String
-  authorImage     String
-  authorImagePublicId     String?  
-  views            Int      @default(0) // For analytics
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  title               String
+  slug                String   @unique // for SEO-friendly URLs
+  shortDescription    String
+  longDescription     String
+  image               String
+  imagePublicId       String?
+  category            String // e.g., "Buying", "Selling", "Investment", etc.
+  categorySlug        String // for SEO-friendly URLs
+  tags                String[] // e.g., ["home buying", "mortgage", "first-time buyers"]
+  location            String? // optional, if the blog is about a specific region
+  isFeatured          Boolean  @default(false)
+  authorName          String
+  authorImage         String
+  authorImagePublicId String?
+  views               Int      @default(0) // For analytics
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
-
-
-
-
 
 // email configuration
 model EmailConfiguration {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  emailMailer    String
-  emailHost      String
-  emailPort      Int
-  emailUserName  String
-  emailPassword  String
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  emailMailer     String
+  emailHost       String
+  emailPort       Int
+  emailUserName   String
+  emailPassword   String
   emailEncryption String
-  emailFromName  String
-  emailAddress   String   @unique
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  emailFromName   String
+  emailAddress    String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
-
-
 
 // Seller Resources
 model SellerResources {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  title          String
-  description    String?
-  image          String?
-  imagePublicId  String?
-  items          Json?     // Each item will have { image, content }
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String?
+  image         String?
+  imagePublicId String?
+  items         Json? // Each item will have { image, content }
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
-
 
 // aksumbase developemnt platform
 model DevelopmentPlatform {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  title          String
-  description    String
-  iosLink        String
-  androidLink    String
-  image          String
-  imagePublicId  String?  // <-- Add this line
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String
+  iosLink       String
+  androidLink   String
+  image         String
+  imagePublicId String? // <-- Add this line
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
-
 
 // property listig (working on mehedi)
 model Property {
-  id            String            @id @default(auto()) @map("_id") @db.ObjectId
-  title         String
-  slug          String   @unique // for SEO-friendly URLs
-  price         Float
-  address       String?
-  city          String?
-  state         String?
-  zip           String?
-  latitude      String?
-  longitude     String?
-  neighborhood  String?
-  views            Int      @default(0) // For analytics
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  slug         String  @unique // for SEO-friendly URLs
+  price        Float
+  address      String?
+  city         String?
+  state        String?
+  zip          String?
+  latitude     String?
+  longitude    String?
+  neighborhood String?
+  views        Int     @default(0) // For analytics
 
+  type     PropertyType // buy, rent, sold
+  property PropertyCategory // apartment, house, etc.
 
-  type          PropertyType      // buy, rent, sold
-  property      PropertyCategory  // apartment, house, etc.
+  bedrooms    Int
+  bathrooms   Int
+  size        Int
+  lotSize     Float?
+  yearBuilt   Int?
+  hoaFees     Int?
+  leaseLength String?
+  furnished   Boolean?
+  deposit     Float?
+  moveInDate  DateTime?
 
-  bedrooms      Int
-  bathrooms     Int
-  size          Int
-  lotSize       Float?
-  yearBuilt     Int?
-  hoaFees       Int?
-  leaseLength   String?
-  furnished     Boolean?
-  deposit       Float?
-  moveInDate    DateTime?
+  amenities String[]
+  garage    Boolean? @default(false)
+  basement  Boolean? @default(false)
+  fireplace Boolean? @default(false)
+  pool      Boolean? @default(false)
 
-  amenities     String[]
-  garage        Boolean?          @default(false)
-  basement      Boolean?          @default(false)
-  fireplace     Boolean?          @default(false)
-  pool          Boolean?          @default(false)
+  pet        String?
+  utilities  String?
+  income     String?
+  school     String?
+  bus        String?
+  restaurant String?
 
-  pet           String?
-  utilities     String?
-  income        String?
-  school        String?
-  bus           String?
-  restaurant    String?
+  images      Json?
+  description String
 
-  images        Json?
-  description   String
+  listingStatus ListingStatus? // optional if you want to use it separately
+  listingType   ListingType? // agent, fsbo, etc.
 
-  listingStatus ListingStatus?    // optional if you want to use it separately
-  listingType   ListingType?      // agent, fsbo, etc.
+  userId     String  @db.ObjectId
+  user       User    @relation(fields: [userId], references: [id])
+  userName   String?
+  userAvatar String?
+  userEmail  String?
 
-  userId        String            @db.ObjectId
-  user          User              @relation(fields: [userId], references: [id])
-  userName      String?
-  userAvatar    String?
-  userEmail     String?
+  status     PropertyStatus @default(pending)
+  flagged    Boolean        @default(false)
+  aiFlagged  Boolean        @default(false)
+  reportedBy String[]       @default([])
+  flagReason String?
+  flagStatus String?        @default("pending")
+  flaggedAt  DateTime?
 
-  status        PropertyStatus    @default(pending)
-  flagged       Boolean           @default(false)
-  aiFlagged     Boolean           @default(false)
-  reportedBy    String[]          @default([])
-  flagReason    String?
-  flagStatus    String?           @default("pending")
-  flaggedAt     DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-
-  Review        Review[]
+  Review   Review[]
+  Bookmark Bookmark[]
 }
+
 enum PropertyType {
   buy
   rent
@@ -388,7 +382,6 @@ enum PropertyStatus {
   pending
   approved
   rejected
-  blocked
 }
 
 enum ListingType {
@@ -403,4 +396,16 @@ enum ListingStatus {
   inactive
   sold
   archived
+}
+
+model Bookmark {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  propertyId String   @db.ObjectId
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, propertyId])
 }
