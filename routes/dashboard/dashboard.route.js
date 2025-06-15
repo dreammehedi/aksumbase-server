@@ -1,10 +1,12 @@
 import express from "express";
 import {
+  adminRequestPropertyContactUser,
   getAdminDashboardOverview,
   getAllProperty,
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
   updateMultiplePropertyStatus,
+  userRequestTour,
 } from "../../controllers/dashboard/dashboard.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -49,6 +51,22 @@ DashboardRouter.put(
   verifyAdminOld,
   paginationMiddleware,
   updateMultiplePropertyStatus
+);
+
+DashboardRouter.get(
+  "/admin/property/tour-request",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  userRequestTour
+);
+
+DashboardRouter.get(
+  "/admin/property/contact-user",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  adminRequestPropertyContactUser
 );
 
 export default DashboardRouter;

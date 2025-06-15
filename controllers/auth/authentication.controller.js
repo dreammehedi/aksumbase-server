@@ -9,7 +9,6 @@ import speakeasy from "speakeasy";
 import decrypt from "../../helper/decrypt.js";
 const prisma = new PrismaClient();
 
-// --------------------- REGISTER ---------------------
 export const registerUser = async (req, res) => {
   try {
     const { email, username, password } = req.body;
@@ -117,7 +116,6 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// --------------------- LOGIN ---------------------
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -738,7 +736,7 @@ export const verify2FA = async (req, res) => {
 };
 
 export const setup2FA = async (req, res) => {
-  const userId = req.userId; // safer than using body.id
+  const userId = req.userId;
 
   if (!userId)
     return res.status(400).json({ message: "User ID not found from token." });
@@ -757,7 +755,7 @@ export const setup2FA = async (req, res) => {
 };
 
 export const remove2FA = async (req, res) => {
-  const userId = req.userId; // safer than using body.id
+  const userId = req.userId;
 
   if (!userId)
     return res.status(400).json({ message: "User ID not found from token." });

@@ -5,6 +5,7 @@ import {
   deleteProperty,
   getProperty,
   getPropertyBySlug,
+  getPropertyByUser,
   getRecentPropertyViews,
   property,
   searchProperty,
@@ -19,6 +20,7 @@ const PropertyRouter = express.Router();
 PropertyRouter.get("/get-property", getProperty);
 PropertyRouter.get("/property", paginationMiddleware, property);
 PropertyRouter.get("/search-property", paginationMiddleware, searchProperty);
+
 PropertyRouter.post(
   "/property",
   verifyToken,
@@ -42,6 +44,12 @@ PropertyRouter.delete(
 );
 
 PropertyRouter.get("/property-details/:slug", getPropertyBySlug);
+PropertyRouter.get(
+  "/user/property",
+  verifyToken,
+  paginationMiddleware,
+  getPropertyByUser
+);
 
 PropertyRouter.post(
   "/property/track-view",
