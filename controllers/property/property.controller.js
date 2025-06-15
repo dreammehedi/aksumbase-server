@@ -106,93 +106,105 @@ export const searchProperty = async (req, res) => {
   }
 };
 
-export const property = async (req, res) => {
-  try {
-    const { skip = 0, limit = 10 } = req.pagination || {};
-    const search = req.query.search || "";
+// export const property = async (req, res) => {
+//   try {
+//     const token = req.headers.authorization?.split(" ")[1];
+//     let userId = null;
 
-    const {
-      city,
-      state,
-      zip,
-      type,
-      property,
-      minPrice,
-      maxPrice,
-      bedrooms,
-      bathrooms,
-      furnished,
-      garage,
-      pool,
-      listingType,
-      listingStatus,
-      amenities,
-    } = req.query;
+//     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+//       userId = decoded.userId;
+//     });
+//     const { skip = 0, limit = 10 } = req.pagination || {};
+//     const search = req.query.search || "";
 
-    const where = {
-      AND: [
-        { status: { equals: "approved" } },
-        {
-          OR: [
-            { title: { contains: search, mode: "insensitive" } },
-            { slug: { contains: search, mode: "insensitive" } },
-            { city: { contains: search, mode: "insensitive" } },
-            { address: { contains: search, mode: "insensitive" } },
-            { zip: { contains: search, mode: "insensitive" } },
-          ],
-        },
-        city ? { city: { equals: city, mode: "insensitive" } } : {},
-        state ? { state: { equals: state, mode: "insensitive" } } : {},
-        zip ? { zip: { equals: zip } } : {},
-        type ? { type: { equals: type } } : {},
-        property ? { property: { equals: property } } : {},
-        listingType ? { listingType: { equals: listingType } } : {},
-        listingStatus ? { listingStatus: { equals: listingStatus } } : {},
-        minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
-        maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
-        bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
-        bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
-        furnished !== undefined ? { furnished: furnished === "true" } : {},
-        garage !== undefined ? { garage: garage === "true" } : {},
-        pool !== undefined ? { pool: pool === "true" } : {},
-        // amenities filter (matches any of the provided amenities)
-        amenities
-          ? {
-              amenities: {
-                hasSome: Array.isArray(amenities)
-                  ? amenities
-                  : amenities.split(","),
-              },
-            }
-          : {},
-      ],
-    };
+//     const {
+//       city,
+//       state,
+//       zip,
+//       type,
+//       property,
+//       minPrice,
+//       maxPrice,
+//       bedrooms,
+//       bathrooms,
+//       furnished,
+//       garage,
+//       pool,
+//       listingType,
+//       listingStatus,
+//       amenities,
+//     } = req.query;
 
-    const data = await prisma.property.findMany({
-      where,
-      skip: Number(skip),
-      take: Number(limit),
-      orderBy: { createdAt: "desc" },
-    });
+//     const where = {
+//       AND: [
+//         { status: { equals: "approved" } },
+//         {
+//           OR: [
+//             { title: { contains: search, mode: "insensitive" } },
+//             { slug: { contains: search, mode: "insensitive" } },
+//             { city: { contains: search, mode: "insensitive" } },
+//             { address: { contains: search, mode: "insensitive" } },
+//             { zip: { contains: search, mode: "insensitive" } },
+//           ],
+//         },
+//         city ? { city: { equals: city, mode: "insensitive" } } : {},
+//         state ? { state: { equals: state, mode: "insensitive" } } : {},
+//         zip ? { zip: { equals: zip } } : {},
+//         type ? { type: { equals: type } } : {},
+//         property ? { property: { equals: property } } : {},
+//         listingType ? { listingType: { equals: listingType } } : {},
+//         listingStatus ? { listingStatus: { equals: listingStatus } } : {},
+//         minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
+//         maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
+//         bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
+//         bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
+//         furnished !== undefined ? { furnished: furnished === "true" } : {},
+//         garage !== undefined ? { garage: garage === "true" } : {},
+//         pool !== undefined ? { pool: pool === "true" } : {},
+//         // amenities filter (matches any of the provided amenities)
+//         amenities
+//           ? {
+//               amenities: {
+//                 hasSome: Array.isArray(amenities)
+//                   ? amenities
+//                   : amenities.split(","),
+//               },
+//             }
+//           : {},
+//       ],
+//     };
 
-    const total = await prisma.property.count({ where });
+//     const bookmarks = await prisma.bookmark.findMany({
+//       where: { userId },
+//       include: { property: true },
+//       orderBy: { createdAt: "desc" },
+//     });
 
-    res.status(200).json({
-      success: true,
-      data,
-      pagination: {
-        total,
-        skip: Number(skip),
-        limit: Number(limit),
-      },
-    });
-  } catch (error) {
-    console.error("Get property error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch property" });
-  }
-};
+//     const data = await prisma.property.findMany({
+//       where,
+//       skip: Number(skip),
+//       take: Number(limit),
+//       orderBy: { createdAt: "desc" },
+//     });
+
+//     const total = await prisma.property.count({ where });
+
+//     res.status(200).json({
+//       success: true,
+//       data,
+//       pagination: {
+//         total,
+//         skip: Number(skip),
+//         limit: Number(limit),
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Get property error:", error);
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to fetch property" });
+//   }
+// };
 
 export const createProperty = async (req, res) => {
   try {
@@ -649,111 +661,129 @@ export const getRecentPropertyViews = async (req, res) => {
   }
 };
 
-// // property data with bookmark
-// export const property = async (req, res) => {
-//   try {
-//     const { skip = 0, limit = 10 } = req.pagination || {};
-//     const search = req.query.search || "";
-//     const userId = req?.userId; // from auth middleware (if present)
-//     console.log(userId, "user id by token");
+import jwt from "jsonwebtoken";
 
-//     const {
-//       city,
-//       state,
-//       zip,
-//       type,
-//       property,
-//       minPrice,
-//       maxPrice,
-//       bedrooms,
-//       bathrooms,
-//       furnished,
-//       garage,
-//       pool,
-//       listingType,
-//       listingStatus,
-//       amenities,
-//     } = req.query;
+export const property = async (req, res) => {
+  try {
+    // 1. Extract token
+    const token = req.headers.authorization?.split(" ")[1];
+    let userId = null;
 
-//     const where = {
-//       AND: [
-//         { status: { equals: "approved" } },
-//         {
-//           OR: [
-//             { title: { contains: search, mode: "insensitive" } },
-//             { slug: { contains: search, mode: "insensitive" } },
-//             { city: { contains: search, mode: "insensitive" } },
-//             { address: { contains: search, mode: "insensitive" } },
-//             { zip: { contains: search, mode: "insensitive" } },
-//           ],
-//         },
-//         city ? { city: { equals: city, mode: "insensitive" } } : {},
-//         state ? { state: { equals: state, mode: "insensitive" } } : {},
-//         zip ? { zip: { equals: zip } } : {},
-//         type ? { type: { equals: type } } : {},
-//         property ? { property: { equals: property } } : {},
-//         listingType ? { listingType: { equals: listingType } } : {},
-//         listingStatus ? { listingStatus: { equals: listingStatus } } : {},
-//         minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
-//         maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
-//         bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
-//         bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
-//         furnished !== undefined ? { furnished: furnished === "true" } : {},
-//         garage !== undefined ? { garage: garage === "true" } : {},
-//         pool !== undefined ? { pool: pool === "true" } : {},
-//         amenities
-//           ? {
-//               amenities: {
-//                 hasSome: Array.isArray(amenities)
-//                   ? amenities
-//                   : amenities.split(","),
-//               },
-//             }
-//           : {},
-//       ],
-//     };
+    // 2. Decode token synchronously
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.userId;
+      } catch (err) {
+        console.warn("Invalid token, skipping user-specific logic.");
+      }
+    }
 
-//     const [data, total] = await Promise.all([
-//       prisma.property.findMany({
-//         where,
-//         skip: Number(skip),
-//         take: Number(limit),
-//         orderBy: { createdAt: "desc" },
-//       }),
-//       prisma.property.count({ where }),
-//     ]);
+    // 3. Get filters
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const search = req.query.search || "";
 
-//     // Get bookmark IDs for the logged-in user
-//     let bookmarkedIds = [];
+    const {
+      city,
+      state,
+      zip,
+      type,
+      property,
+      minPrice,
+      maxPrice,
+      bedrooms,
+      bathrooms,
+      furnished,
+      garage,
+      pool,
+      listingType,
+      listingStatus,
+      amenities,
+    } = req.query;
 
-//     if (userId && /^[a-f\d]{24}$/i.test(userId)) {
-//       const bookmarks = await prisma.bookmark.findMany({
-//         where: { userId },
-//         select: { propertyId: true },
-//       });
+    const where = {
+      AND: [
+        { status: { equals: "approved" } },
+        {
+          OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { slug: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
+            { zip: { contains: search, mode: "insensitive" } },
+          ],
+        },
+        city ? { city: { equals: city, mode: "insensitive" } } : {},
+        state ? { state: { equals: state, mode: "insensitive" } } : {},
+        zip ? { zip: { equals: zip } } : {},
+        type ? { type: { equals: type } } : {},
+        property ? { property: { equals: property } } : {},
+        listingType ? { listingType: { equals: listingType } } : {},
+        listingStatus ? { listingStatus: { equals: listingStatus } } : {},
+        minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
+        maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
+        bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
+        bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
+        furnished !== undefined ? { furnished: furnished === "true" } : {},
+        garage !== undefined ? { garage: garage === "true" } : {},
+        pool !== undefined ? { pool: pool === "true" } : {},
+        amenities
+          ? {
+              amenities: {
+                hasSome: Array.isArray(amenities)
+                  ? amenities
+                  : amenities.split(","),
+              },
+            }
+          : {},
+      ],
+    };
 
-//       bookmarkedIds = bookmarks.map((b) => b.propertyId.toString());
-//     }
+    // 4. Fetch properties
+    const [properties, total] = await Promise.all([
+      prisma.property.findMany({
+        where,
+        skip: Number(skip),
+        take: Number(limit),
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.property.count({ where }),
+    ]);
 
-//     // Append isBookmarked flag
-//     const updatedData = data.map((p) => ({
-//       ...p,
-//       isBookmarked: bookmarkedIds.includes(p.id.toString()),
-//     }));
+    // 5. Get user bookmark property IDs (if user is logged in)
+    let bookmarkedPropertyIds = [];
 
-//     res.status(200).json({
-//       success: true,
-//       data: updatedData,
-//       pagination: {
-//         total,
-//         skip: Number(skip),
-//         limit: Number(limit),
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Get property error:", error);
-//     res
-//       .status(500)
-//       .json({ success: false, message: "Failed to fetch property" });
-//   }
-// };
+    if (userId) {
+      const bookmarks = await prisma.bookmark.findMany({
+        where: { userId },
+        select: { propertyId: true, userId: true },
+      });
+      bookmarkedPropertyIds = bookmarks.map((b) => b.propertyId);
+    }
+
+    // 6. Add `isBookmarked` to each property
+    const updatedProperties = properties.map((prop) => {
+      return {
+        ...prop,
+        isBookmarked: bookmarkedPropertyIds.includes(prop.id),
+      };
+    });
+
+    // 7. Response
+    res.status(200).json({
+      success: true,
+      data: updatedProperties,
+      pagination: {
+        total,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
+    });
+  } catch (error) {
+    console.error("Get property error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch property",
+    });
+  }
+};
