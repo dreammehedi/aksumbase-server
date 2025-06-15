@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import jwt from "jsonwebtoken";
 import slugify from "slugify";
 import { cloudinary } from "../../config/cloudinary.config.js";
 
@@ -661,8 +662,7 @@ export const getRecentPropertyViews = async (req, res) => {
   }
 };
 
-import jwt from "jsonwebtoken";
-
+// get property data and bookmark data merge
 export const property = async (req, res) => {
   try {
     // 1. Extract token
@@ -704,6 +704,120 @@ export const property = async (req, res) => {
     const where = {
       AND: [
         { status: { equals: "approved" } },
+        {
+          OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { slug: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
+            { zip: { contains: search, mode: "insensitive" } },
+          ],
+        },
+        city ? { city: { equals: city, mode: "insensitive" } } : {},
+        state ? { state: { equals: state, mode: "insensitive" } } : {},
+        zip ? { zip: { equals: zip } } : {},
+        type ? { type: { equals: type } } : {},
+        property ? { property: { equals: property } } : {},
+        listingType ? { listingType: { equals: listingType } } : {},
+        listingStatus ? { listingStatus: { equals: listingStatus } } : {},
+        minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
+        maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
+        bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
+        bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
+        furnished !== undefined ? { furnished: furnished === "true" } : {},
+        garage !== undefined ? { garage: garage === "true" } : {},
+        pool !== undefined ? { pool: pool === "true" } : {},
+        amenities
+          ? {
+              amenities: {
+                hasSome: Array.isArray(amenities)
+                  ? amenities
+                  : amenities.split(","),
+              },
+            }
+          : {},
+      ],
+    };
+
+    // 4. Fetch properties
+    const [properties, total] = await Promise.all([
+      prisma.property.findMany({
+        where,
+        skip: Number(skip),
+        take: Number(limit),
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.property.count({ where }),
+    ]);
+
+    // 5. Get user bookmark property IDs (if user is logged in)
+    let bookmarkedPropertyIds = [];
+
+    if (userId) {
+      const bookmarks = await prisma.bookmark.findMany({
+        where: { userId },
+        select: { propertyId: true, userId: true },
+      });
+      bookmarkedPropertyIds = bookmarks.map((b) => b.propertyId);
+    }
+
+    // 6. Add `isBookmarked` to each property
+    const updatedProperties = properties.map((prop) => {
+      return {
+        ...prop,
+        isBookmarked: bookmarkedPropertyIds.includes(prop.id),
+      };
+    });
+
+    // 7. Response
+    res.status(200).json({
+      success: true,
+      data: updatedProperties,
+      pagination: {
+        total,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
+    });
+  } catch (error) {
+    console.error("Get property error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch property",
+    });
+  }
+};
+
+// get property by user
+export const getPropertyByUser = async (req, res) => {
+  try {
+    const userId = req.userId;
+    // 3. Get filters
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const search = req.query.search || "";
+
+    const {
+      city,
+      state,
+      zip,
+      type,
+      property,
+      minPrice,
+      maxPrice,
+      bedrooms,
+      bathrooms,
+      furnished,
+      garage,
+      pool,
+      listingType,
+      listingStatus,
+      amenities,
+    } = req.query;
+
+    const where = {
+      AND: [
+        { status: { equals: "approved" } },
+        { userId: { equals: userId } }, // ✅ This limits results to properties added by the user
         {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
