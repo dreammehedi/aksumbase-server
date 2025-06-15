@@ -4,6 +4,7 @@ import { createError } from "../utils/error.js";
 export const verifyAdminOld = async (req, res, next) => {
   try {
     const userId = req.userId;
+    console.log(userId);
 
     // Get user from database
     const user = await prisma.user.findUnique({

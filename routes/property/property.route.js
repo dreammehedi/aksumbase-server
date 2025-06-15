@@ -19,6 +19,7 @@ const PropertyRouter = express.Router();
 PropertyRouter.get("/get-property", getProperty);
 PropertyRouter.get("/property", paginationMiddleware, property);
 PropertyRouter.get("/search-property", paginationMiddleware, searchProperty);
+
 PropertyRouter.post(
   "/property",
   verifyToken,

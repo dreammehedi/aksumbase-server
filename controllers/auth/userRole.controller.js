@@ -3,7 +3,11 @@ import prisma from "../../lib/prisma.js";
 
 // Purchase role package
 export const purchaseRole = async (req, res) => {
-  const { userId, rolePackageId } = req.body;
+  const { rolePackageId } = req.body;
+  const userId = req.userId;
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
 
   try {
     // 1. Check if role package exists
@@ -54,7 +58,11 @@ export const purchaseRole = async (req, res) => {
 };
 // Activate specific role
 export const activateRole = async (req, res) => {
-  const { userId, userRoleId } = req.body;
+  const { userRoleId } = req.body;
+  const userId = req.userId;
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
 
   try {
     // 1. Find the specific user role
@@ -68,11 +76,9 @@ export const activateRole = async (req, res) => {
 
     // 2. Check if it belongs to the user
     if (userRole.userId !== userId) {
-      return res
-        .status(403)
-        .json({
-          error: "You cannot activate a role that doesn't belong to you.",
-        });
+      return res.status(403).json({
+        error: "You cannot activate a role that doesn't belong to you.",
+      });
     }
 
     // 3. Check if the role is expired
@@ -109,7 +115,6 @@ export const pauseRole = async (req, res) => {
   const { userRoleId } = req.body;
 
   try {
-    // 1. খুঁজে বের করো userRole টি
     const userRole = await prisma.userRole.findUnique({
       where: { id: userRoleId },
     });

@@ -2,7 +2,11 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const addBookmark = async (req, res) => {
-  const { propertyId, userId } = req.body;
+  const { propertyId } = req.body;
+  const userId = req.userId;
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
 
   if (!userId || !propertyId) {
     return res.status(400).json({
@@ -38,7 +42,12 @@ export const addBookmark = async (req, res) => {
 };
 
 export const removeBookmark = async (req, res) => {
-  const { propertyId, userId } = req.body;
+  const { propertyId } = req.body;
+
+  const userId = req.userId;
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
 
   // 1. Check required fields
   if (!userId || !propertyId) {
@@ -87,6 +96,12 @@ export const removeBookmark = async (req, res) => {
 
 export const getUserBookmarks = async (req, res) => {
   const userId = req.params.userId;
+
+  //   const userId = req.userId;
+
+  // if (!userId)
+  //   return res.status(400).json({ message: "User ID not found from token." });
+
   if (!userId) {
     return res.status(400).json({
       success: false,
@@ -110,7 +125,13 @@ export const getUserBookmarks = async (req, res) => {
 };
 
 export const toggleBookmark = async (req, res) => {
-  const { propertyId, userId } = req.body;
+  const { propertyId } = req.body;
+
+  const userId = req.userId;
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
+
   if (!userId || !propertyId) {
     return res.status(400).json({
       success: false,

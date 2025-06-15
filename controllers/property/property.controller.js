@@ -232,10 +232,13 @@ export const createProperty = async (req, res) => {
       description,
       listingStatus,
       listingType,
-      userId,
     } = req.body;
 
-    console.log(req.body);
+    const userId = req.userId;
+
+    if (!userId)
+      return res.status(400).json({ message: "User ID not found from token." });
+
     if (
       !title ||
       !type ||
@@ -244,8 +247,7 @@ export const createProperty = async (req, res) => {
       !bedrooms ||
       !bathrooms ||
       !size ||
-      !description ||
-      !userId
+      !description
     ) {
       return res
         .status(400)
@@ -288,7 +290,6 @@ export const createProperty = async (req, res) => {
         publicId: file.filename,
       }))
     );
-    console.log(uploadedImages, "uploadedImages");
     const newProperty = await prisma.property.create({
       data: {
         title,
@@ -386,8 +387,12 @@ export const updateProperty = async (req, res) => {
       description,
       listingStatus,
       listingType,
-      userId,
     } = req.body;
+
+    const userId = req.userId;
+
+    if (!userId)
+      return res.status(400).json({ message: "User ID not found from token." });
 
     if (!id) {
       return res
@@ -499,6 +504,11 @@ export const updateProperty = async (req, res) => {
 export const deleteProperty = async (req, res) => {
   const { id } = req.params;
 
+  const userId = req.userId;
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
+
   try {
     const property = await prisma.property.findUnique({ where: { id } });
 
@@ -565,7 +575,12 @@ export const getPropertyBySlug = async (req, res) => {
 };
 
 export const trackPropertyView = async (req, res) => {
-  const { userId, propertyId } = req.body;
+  const { propertyId } = req.body;
+
+  const userId = req.userId;
+
+  if (!userId)
+    return res.status(400).json({ message: "User ID not found from token." });
 
   // Validate inputs
   if (!userId || !propertyId) {
@@ -608,6 +623,11 @@ export const trackPropertyView = async (req, res) => {
 export const getRecentPropertyViews = async (req, res) => {
   const { userId } = req.params;
 
+  // const userId = req.userId;
+
+  // if (!userId)
+  //   return res.status(400).json({ message: "User ID not found from token." });
+
   if (!userId || !/^[a-f\d]{24}$/i.test(userId)) {
     return res.status(400).json({ success: false, message: "Invalid userId" });
   }
@@ -628,3 +648,112 @@ export const getRecentPropertyViews = async (req, res) => {
       .json({ success: false, message: "Failed to fetch recent views" });
   }
 };
+
+// // property data with bookmark
+// export const property = async (req, res) => {
+//   try {
+//     const { skip = 0, limit = 10 } = req.pagination || {};
+//     const search = req.query.search || "";
+//     const userId = req?.userId; // from auth middleware (if present)
+//     console.log(userId, "user id by token");
+
+//     const {
+//       city,
+//       state,
+//       zip,
+//       type,
+//       property,
+//       minPrice,
+//       maxPrice,
+//       bedrooms,
+//       bathrooms,
+//       furnished,
+//       garage,
+//       pool,
+//       listingType,
+//       listingStatus,
+//       amenities,
+//     } = req.query;
+
+//     const where = {
+//       AND: [
+//         { status: { equals: "approved" } },
+//         {
+//           OR: [
+//             { title: { contains: search, mode: "insensitive" } },
+//             { slug: { contains: search, mode: "insensitive" } },
+//             { city: { contains: search, mode: "insensitive" } },
+//             { address: { contains: search, mode: "insensitive" } },
+//             { zip: { contains: search, mode: "insensitive" } },
+//           ],
+//         },
+//         city ? { city: { equals: city, mode: "insensitive" } } : {},
+//         state ? { state: { equals: state, mode: "insensitive" } } : {},
+//         zip ? { zip: { equals: zip } } : {},
+//         type ? { type: { equals: type } } : {},
+//         property ? { property: { equals: property } } : {},
+//         listingType ? { listingType: { equals: listingType } } : {},
+//         listingStatus ? { listingStatus: { equals: listingStatus } } : {},
+//         minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
+//         maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
+//         bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
+//         bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
+//         furnished !== undefined ? { furnished: furnished === "true" } : {},
+//         garage !== undefined ? { garage: garage === "true" } : {},
+//         pool !== undefined ? { pool: pool === "true" } : {},
+//         amenities
+//           ? {
+//               amenities: {
+//                 hasSome: Array.isArray(amenities)
+//                   ? amenities
+//                   : amenities.split(","),
+//               },
+//             }
+//           : {},
+//       ],
+//     };
+
+//     const [data, total] = await Promise.all([
+//       prisma.property.findMany({
+//         where,
+//         skip: Number(skip),
+//         take: Number(limit),
+//         orderBy: { createdAt: "desc" },
+//       }),
+//       prisma.property.count({ where }),
+//     ]);
+
+//     // Get bookmark IDs for the logged-in user
+//     let bookmarkedIds = [];
+
+//     if (userId && /^[a-f\d]{24}$/i.test(userId)) {
+//       const bookmarks = await prisma.bookmark.findMany({
+//         where: { userId },
+//         select: { propertyId: true },
+//       });
+
+//       bookmarkedIds = bookmarks.map((b) => b.propertyId.toString());
+//     }
+
+//     // Append isBookmarked flag
+//     const updatedData = data.map((p) => ({
+//       ...p,
+//       isBookmarked: bookmarkedIds.includes(p.id.toString()),
+//     }));
+
+//     res.status(200).json({
+//       success: true,
+//       data: updatedData,
+//       pagination: {
+//         total,
+//         skip: Number(skip),
+//         limit: Number(limit),
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Get property error:", error);
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to fetch property" });
+//   }
+// };
