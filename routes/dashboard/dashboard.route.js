@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  adminRequestPropertyContactUser,
   getAdminDashboardOverview,
   getAllProperty,
   getAllUsersByAdmin,
@@ -58,6 +59,14 @@ DashboardRouter.get(
   verifyAdminOld,
   paginationMiddleware,
   userRequestTour
+);
+
+DashboardRouter.get(
+  "/admin/property/contact-user",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  adminRequestPropertyContactUser
 );
 
 export default DashboardRouter;

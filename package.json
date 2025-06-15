@@ -7,7 +7,7 @@
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm install",
-    "dbPush": "npx prisma db push"
+    "dbpush": "npx prisma db push"
   },
   "keywords": [],
   "author": "",

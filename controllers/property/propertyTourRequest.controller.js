@@ -293,6 +293,10 @@ export const requestTour = async (req, res) => {
 export const userRequestTour = async (req, res) => {
   try {
     const userId = req.userId;
+
+    if (!userId)
+      return res.status(400).json({ message: "User ID not found from token." });
+
     const { skip = 0, limit = 10 } = req.pagination || {};
     const search = req.query.search || "";
     const filterDate = req.query.date;
