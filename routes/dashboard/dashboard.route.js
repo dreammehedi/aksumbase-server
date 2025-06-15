@@ -5,6 +5,7 @@ import {
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
   updateMultiplePropertyStatus,
+  userRequestTour,
 } from "../../controllers/dashboard/dashboard.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -49,6 +50,14 @@ DashboardRouter.put(
   verifyAdminOld,
   paginationMiddleware,
   updateMultiplePropertyStatus
+);
+
+DashboardRouter.get(
+  "/admin/property/tour-request",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  userRequestTour
 );
 
 export default DashboardRouter;

@@ -27,6 +27,7 @@ import OtherRouter from "./routes/other/other.route.js";
 import SellerResourcesRouter from "./routes/other/sellerResources.route.js";
 import { default as PropertyRouter } from "./routes/property/property.route.js";
 import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js";
+import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
 
 // Configure environment variables
 dotenv.config();
@@ -146,6 +147,7 @@ app.use("/api", RolePackageRouter);
 app.use("/api", UserRoleRouter);
 app.use("/api", DashboardRouter);
 app.use("/api", PropertyBookmarkRouter);
+app.use("/api", PropertyTourRequestRouter);
 
 // Start cron job
 roleExpiryChecker();
