@@ -23,7 +23,6 @@ export const updateEmailConfiguration = async (req, res) => {
   try {
     const { id, emailPassword, emailPort, ...otherFields } = req.body;
 
-    console.log(emailPort, "email port");
     if (!id) {
       return res.status(400).json({
         success: false,
