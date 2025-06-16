@@ -1,13 +1,18 @@
 import dayjs from "dayjs"; // For date manipulation
 import prisma from "../../lib/prisma.js";
 
-// Purchase role package
 export const purchaseRole = async (req, res) => {
-  const { rolePackageId } = req.body;
+  const { rolePackageId, fullName, phone, address, message } = req.body;
+
   const userId = req.userId;
 
   if (!userId)
     return res.status(400).json({ message: "User ID not found from token." });
+
+  // Validate required fields
+  if (!rolePackageId || !fullName || !phone || !address) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
 
   try {
     // 1. Check if role package exists
@@ -19,21 +24,31 @@ export const purchaseRole = async (req, res) => {
       return res.status(404).json({ error: "Role package not found" });
     }
 
-    // 2. Check if user already purchased this role package
+    // 2. Check if already purchased
     const existingPurchase = await prisma.userRole.findFirst({
-      where: {
-        userId,
-        rolePackageId,
-      },
+      where: { userId, rolePackageId },
     });
 
     if (existingPurchase) {
-      return res
-        .status(400)
-        .json({ error: "You already purchased this role package." });
+      return res.status(400).json({ error: "Already purchased." });
     }
 
-    // 3. Create new user role
+    // 3. Extract uploaded files from Cloudinary via multer
+    const passportFile = req.files["passport"]?.[0];
+    const nidFile = req.files["nid"]?.[0];
+
+    if (!passportFile || !nidFile) {
+      return res
+        .status(400)
+        .json({ error: "Both passport and NID PDFs are required." });
+    }
+
+    const documentUrls = {
+      passport: passportFile.path || passportFile.url,
+      nid: nidFile.path || nidFile.url,
+    };
+
+    // 4. Create user role request
     const startDate = new Date();
     const endDate = dayjs(startDate)
       .add(rolePackage.durationDays, "day")
@@ -45,17 +60,28 @@ export const purchaseRole = async (req, res) => {
         rolePackageId,
         startDate,
         endDate,
-        isActive: false, // You can set true if you want auto activate
+        isActive: false,
         isPaused: false,
         isExpired: false,
+        fullName,
+        phone,
+        nid: documentUrls.nid,
+        Passport: documentUrls.passport,
+        address,
+        message: message || null,
+        isVerified: false,
       },
     });
 
-    res.status(201).json(newUserRole);
+    res.status(201).json({
+      message: "Submitted for verification.",
+      data: newUserRole,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 // Activate specific role
 export const activateRole = async (req, res) => {
   const { userRoleId } = req.body;

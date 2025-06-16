@@ -47,13 +47,25 @@ enum RoleName {
 
 model UserRole {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String
-  rolePackageId String
+  userId        String   @db.ObjectId
+  rolePackageId String   @db.ObjectId
   startDate     DateTime
   endDate       DateTime
   isActive      Boolean  @default(false)
   isPaused      Boolean  @default(false)
   isExpired     Boolean  @default(false)
+
+  // 🆕 New fields for verification
+  fullName      String
+  Passport      String
+  phone         String
+  nid           String
+  address       String   
+  message       String?     
+  isVerified    Boolean     @default(false)
+  verifiedAt    DateTime?   
+  verifiedBy    String?    
+
   createdAt     DateTime @default(now())
 
   user        User        @relation(fields: [userId], references: [id])
