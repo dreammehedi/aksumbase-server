@@ -10,8 +10,6 @@ const RolePackageRouter = express.Router();
 
 RolePackageRouter.get(
   "/role-package",
-  verifyToken,
-
   getAllRolePackages
 );
 RolePackageRouter.post(
