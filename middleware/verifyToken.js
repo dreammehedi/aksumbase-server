@@ -9,10 +9,8 @@ export const verifyToken = (req, res, next) => {
   }
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      console.log(err, "erro");
       return next(createError(403, "Token is not valid!"));
     }
-    console.log(decoded, "decoded token");
     req.userId = decoded.userId;
     req.email = decoded.email;
     req.role = decoded.role;

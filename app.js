@@ -125,13 +125,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-// API Routes
-// app.use("/api/users", userRoutes);
-// app.use("/api/auditlog", auditlogRoutes);
-// app.use("/api/test", testRoutes);
-// app.use("/api/email", emailRoutes);
-// app.use("/api/reviews", reviewRoutes);
-
 // routes
 app.use("/api", HeroBannerRouter);
 app.use("/api", MarketTrendsRouter);

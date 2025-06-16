@@ -96,7 +96,6 @@ export const requestPropertyContactUser = async (req, res) => {
       },
       user,
     } = contactRequest;
-    console.log(user, "user contact request");
     // Compose HTML Email
     // const html = `
     //   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
