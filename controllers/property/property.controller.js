@@ -570,15 +570,39 @@ export const getPropertyBySlug = async (req, res) => {
 
     // Update the visit count
     await prisma.property.update({
-      where: { slug, status: "approved" },
+      where: { slug },
       data: {
         views: {
-          increment: 1, // increment visitCount by 1
+          increment: 1,
         },
       },
     });
 
-    res.status(200).json({ success: true, data: property });
+    // Get relevant properties (e.g., same category, city, and not the current one)
+    const relevantProperties = await prisma.property.findMany({
+      where: {
+        id: {
+          not: property.id,
+        },
+        address: property?.address || "",
+        city: property?.city || "",
+        state: property?.state || "",
+        type: property?.type || "",
+        status: "approved",
+      },
+      take: 20, // limit the number of relevant properties
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        property,
+        relevantProperties: relevantProperties || [],
+      },
+    });
   } catch (error) {
     console.error("Get property by slug error:", error);
     res

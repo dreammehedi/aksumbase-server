@@ -112,7 +112,10 @@ export const requestTour = async (req, res) => {
       });
     }
 
-    const parseTourTimes = JSON.parse(tourTimes);
+    // const parseTourTimes = JSON.parse(tourTimes);
+
+    const parseTourTimes =
+      typeof tourTimes === "string" ? JSON.parse(tourTimes) : tourTimes;
 
     if (parseTourTimes.length > 3) {
       return res.status(400).json({
