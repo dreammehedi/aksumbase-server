@@ -2,7 +2,15 @@ import dayjs from "dayjs"; // For date manipulation
 import prisma from "../../lib/prisma.js";
 
 export const purchaseRole = async (req, res) => {
-  const { rolePackageId, fullName, phone, address, message } = req.body;
+  const {
+    rolePackageId,
+    fullName,
+    phone,
+    address,
+    message,
+    passportNum,
+    nidNum,
+  } = req.body;
 
   const userId = req.userId;
 
@@ -33,40 +41,24 @@ export const purchaseRole = async (req, res) => {
       return res.status(400).json({ error: "Already purchased." });
     }
 
-    // 3. Extract uploaded files from Cloudinary via multer
-    const passportFile = req.files["passport"]?.[0];
-    const nidFile = req.files["nid"]?.[0];
-
-    if (!passportFile || !nidFile) {
+    if (!passportNum || !nidNum) {
       return res
         .status(400)
         .json({ error: "Both passport and NID PDFs are required." });
     }
 
-    const documentUrls = {
-      passport: passportFile.path || passportFile.url,
-      nid: nidFile.path || nidFile.url,
-    };
-
-    // 4. Create user role request
-    const startDate = new Date();
-    const endDate = dayjs(startDate)
-      .add(rolePackage.durationDays, "day")
-      .toDate();
-
+    // 3. Create user role request without setting start/end date
     const newUserRole = await prisma.userRole.create({
       data: {
         userId,
         rolePackageId,
-        startDate,
-        endDate,
         isActive: false,
         isPaused: false,
         isExpired: false,
         fullName,
         phone,
-        nid: documentUrls.nid,
-        Passport: documentUrls.passport,
+        nid: nidNum,
+        Passport: passportNum,
         address,
         message: message || null,
         isVerified: false,
@@ -82,94 +74,94 @@ export const purchaseRole = async (req, res) => {
   }
 };
 
-// Activate specific role
 export const activateRole = async (req, res) => {
   const { userRoleId } = req.body;
-  const userId = req.userId;
+  const adminId = req.userId;
 
-  if (!userId)
-    return res.status(400).json({ message: "User ID not found from token." });
+  if (!adminId) {
+    return res.status(400).json({ message: "Admin ID not found from token." });
+  }
 
   try {
-    // 1. Find the specific user role
+    // 1. Find the specific user role with package info
     const userRole = await prisma.userRole.findUnique({
       where: { id: userRoleId },
+      include: { rolePackage: true },
     });
 
     if (!userRole) {
       return res.status(404).json({ error: "User role not found." });
     }
 
-    // 2. Check if it belongs to the user
-    if (userRole.userId !== userId) {
-      return res.status(403).json({
-        error: "You cannot activate a role that doesn't belong to you.",
-      });
+    // 2. Prevent re-activation if already active
+    if (userRole.isActive) {
+      return res.status(400).json({ error: "Role is already active." });
     }
 
-    // 3. Check if the role is expired
-    const now = new Date();
-    if (userRole.isExpired || userRole.endDate < now) {
-      return res
-        .status(400)
-        .json({ error: "Cannot activate an expired role." });
-    }
+    // 3. Calculate duration
+    const startDate = new Date();
+    const endDate = dayjs(startDate)
+      .add(userRole.rolePackage.durationDays, "day")
+      .toDate();
 
-    // 4. Pause all other roles
-    await prisma.userRole.updateMany({
-      where: {
-        userId,
-        NOT: { id: userRoleId },
-      },
-      data: { isActive: false, isPaused: true },
-    });
-
-    // 5. Activate the selected role
-    const activeRole = await prisma.userRole.update({
+    // 5. Activate and verify the selected role
+    const activatedRole = await prisma.userRole.update({
       where: { id: userRoleId },
-      data: { isActive: true, isPaused: false },
+      data: {
+        startDate,
+        endDate,
+        isActive: true,
+        isPaused: false,
+        isExpired: false,
+        isVerified: true,
+        verifiedAt: new Date(),
+        verifiedBy: adminId,
+      },
     });
 
-    res.json(activeRole);
+    res.status(200).json({
+      message: "Role activated and verified successfully.",
+      data: activatedRole,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 // Pause a role
-export const pauseRole = async (req, res) => {
-  const { userRoleId } = req.body;
+// export const pauseRole = async (req, res) => {
+//   const { userRoleId } = req.body;
 
-  try {
-    const userRole = await prisma.userRole.findUnique({
-      where: { id: userRoleId },
-    });
+//   try {
+//     const userRole = await prisma.userRole.findUnique({
+//       where: { id: userRoleId },
+//     });
 
-    if (!userRole) {
-      return res.status(404).json({ error: "User role not found" });
-    }
+//     if (!userRole) {
+//       return res.status(404).json({ error: "User role not found" });
+//     }
 
-    // 2. Check if it's already inactive
-    if (!userRole.isActive) {
-      return res
-        .status(400)
-        .json({ error: "Role is not active, cannot pause." });
-    }
+//     // 2. Check if it's already inactive
+//     if (!userRole.isActive) {
+//       return res
+//         .status(400)
+//         .json({ error: "Role is not active, cannot pause." });
+//     }
 
-    // 3. Pause the role
-    const paused = await prisma.userRole.update({
-      where: { id: userRoleId },
-      data: {
-        isActive: false,
-        isPaused: true,
-      },
-    });
+//     // 3. Pause the role
+//     const paused = await prisma.userRole.update({
+//       where: { id: userRoleId },
+//       data: {
+//         isActive: false,
+//         isPaused: true,
+//       },
+//     });
 
-    res.json(paused);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+//     res.json(paused);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
 // Renew expired role
 export const renewRole = async (req, res) => {
   const { userRoleId } = req.body;
@@ -180,7 +172,9 @@ export const renewRole = async (req, res) => {
       include: { rolePackage: true },
     });
 
-    if (!role) return res.status(404).json({ error: "Role not found" });
+    if (!role) {
+      return res.status(404).json({ error: "Role not found." });
+    }
 
     if (!role.isExpired) {
       return res
@@ -188,12 +182,13 @@ export const renewRole = async (req, res) => {
         .json({ error: "Role is not expired, cannot renew." });
     }
 
-    // 3. Renew logic
+    // 3. Set new duration
     const newStartDate = new Date();
     const newEndDate = dayjs(newStartDate)
       .add(role.rolePackage.durationDays, "day")
       .toDate();
 
+    // 4. Renew the role
     const renewed = await prisma.userRole.update({
       where: { id: userRoleId },
       data: {
@@ -205,7 +200,49 @@ export const renewRole = async (req, res) => {
       },
     });
 
-    res.json(renewed);
+    res.status(200).json({
+      message: "Role renewed successfully.",
+      data: renewed,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get all user role applications (Admin only)
+export const getAllUserRoleApplications = async (req, res) => {
+  const adminId = req.userId; // assume admin auth middleware already used
+
+  if (!adminId) {
+    return res.status(401).json({ error: "Unauthorized access." });
+  }
+
+  try {
+    const userRoles = await prisma.userRole.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+          },
+        },
+        rolePackage: {
+          select: {
+            id: true,
+            name: true,
+            durationDays: true,
+            price: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: "User role applications fetched successfully.",
+      data: userRoles,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
