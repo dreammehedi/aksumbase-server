@@ -8,10 +8,12 @@ const storage = new CloudinaryStorage({
   params: async (req, file) => {
     let resourceType = "image"; // Default
 
-    if (file.mimetype.includes("video")) {
+    if (file.mimetype === "application/pdf") {
+      resourceType = "auto";
+    } else if (file.mimetype.startsWith("video/")) {
       resourceType = "video";
-    } else if (file.mimetype.includes("pdf")) {
-      resourceType = "raw"; // PDFs as raw
+    } else if (file.mimetype.startsWith("image/")) {
+      resourceType = "image";
     }
 
     return {
