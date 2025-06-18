@@ -19,7 +19,7 @@ import { verifyToken } from "../../middleware/verifyToken.js";
 const AuthenticationRouter = express.Router();
 const AuthRouter = express.Router();
 
-AuthenticationRouter.get("/user-profile/:email", getUserProfile);
+AuthenticationRouter.get("/user-profile", verifyToken, getUserProfile);
 AuthenticationRouter.post("/user-register", upload.none(), registerUser);
 AuthenticationRouter.post("/login", upload.none(), loginUser);
 AuthenticationRouter.post("/setup-2fa", verifyToken, upload.none(), setup2FA);

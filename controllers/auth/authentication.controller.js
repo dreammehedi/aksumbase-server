@@ -611,7 +611,13 @@ export const changePassword = async (req, res) => {
 };
 
 export const getUserProfile = async (req, res) => {
-  const { email } = req.params;
+  // const { email } = req.params;
+
+  const email = req.email;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email not found in token." });
+  }
 
   try {
     if (!email) {
