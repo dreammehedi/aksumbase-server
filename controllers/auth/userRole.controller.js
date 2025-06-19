@@ -5,19 +5,20 @@ export const purchaseRole = async (req, res) => {
   const { rolePackageId, message } = req.body;
   const userId = req.userId;
 
+  // 1. Auth check
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized user." });
   }
 
+  // 2. Role package ID check
   if (!rolePackageId) {
     return res.status(400).json({
       error: "Required fields: rolePackageId.",
     });
   }
 
-  // Image validation
-  const imageFile = req.file; // assuming upload.single('image') is used
-
+  // 3. Image file check (assuming middleware: upload.single('image'))
+  const imageFile = req.file;
   if (!imageFile) {
     return res.status(400).json({
       success: false,
@@ -26,7 +27,7 @@ export const purchaseRole = async (req, res) => {
   }
 
   try {
-    // 1. Check if role package exists
+    // 4. Check if the role package exists
     const rolePackage = await prisma.rolePackage.findUnique({
       where: { id: rolePackageId },
     });
@@ -35,21 +36,22 @@ export const purchaseRole = async (req, res) => {
       return res.status(404).json({ error: "Role package not found." });
     }
 
-    // 2. Prevent duplicate submission
-    const existingPurchase = await prisma.userRole.findFirst({
+    // 5. Check if user already has an active or pending role (not expired)
+    const existingActiveRole = await prisma.userRole.findFirst({
       where: {
         userId,
-        rolePackageId,
+        isExpired: false, // still active or awaiting verification
       },
     });
 
-    if (existingPurchase) {
+    if (existingActiveRole) {
       return res.status(400).json({
-        error: "You have already submitted this role package.",
+        error:
+          "You already have an active or pending role package. Please wait until it expires or gets reviewed.",
       });
     }
 
-    // 3. Create new userRole with image info
+    // 6. Create new userRole with image
     const newUserRole = await prisma.userRole.create({
       data: {
         userId,
@@ -64,6 +66,7 @@ export const purchaseRole = async (req, res) => {
       },
     });
 
+    // 7. Respond success
     res.status(201).json({
       message: "Your request has been submitted for verification.",
       data: newUserRole,
