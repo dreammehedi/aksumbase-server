@@ -3,6 +3,7 @@ import {
   adminRequestPropertyContactUser,
   getAdminDashboardOverview,
   getAllProperty,
+  getAllUserRoleApplications,
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
   updateMultiplePropertyStatus,
@@ -67,6 +68,14 @@ DashboardRouter.get(
   verifyAdminOld,
   paginationMiddleware,
   adminRequestPropertyContactUser
+);
+
+DashboardRouter.get(
+  "/admin/role-applications",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getAllUserRoleApplications
 );
 
 export default DashboardRouter;
