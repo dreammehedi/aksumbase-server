@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import prisma from "../lib/prisma.js";
+import decrypt from "./decrypt.js";
 
 export const sendEmail = async ({ to, subject, html }) => {
   const emailConfig = await prisma.emailConfiguration.findFirst();
@@ -21,7 +23,7 @@ export const sendEmail = async ({ to, subject, html }) => {
   });
 
   const mailOptions = {
-    from: `"FreshRole" <${process.env.EMAIL_FROM}>`,
+    from: `"FreshRole" <${emailConfig.emailUserName}>`,
     to,
     subject,
     html,

@@ -439,3 +439,68 @@ export const adminRequestPropertyContactUser = async (req, res) => {
     });
   }
 };
+
+export const getAllUserRoleApplications = async (req, res) => {
+  const adminId = req.userId;
+  const { skip = 0, limit = 10 } = req.query;
+  const search = req.query.search?.trim() || "";
+
+  if (!adminId) {
+    return res.status(401).json({ error: "Unauthorized access." });
+  }
+
+  try {
+    const whereClause = search
+      ? {
+          OR: [
+            { user: { username: { contains: search, mode: "insensitive" } } },
+            { user: { email: { contains: search, mode: "insensitive" } } },
+            { user: { phone: { contains: search, mode: "insensitive" } } },
+          ],
+        }
+      : {};
+
+    const [userRoles, total] = await Promise.all([
+      prisma.userRole.findMany({
+        where: whereClause,
+        skip: Number(skip),
+        take: Number(limit),
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              phone: true,
+              bio: true,
+            },
+          },
+          rolePackage: {
+            select: {
+              id: true,
+              name: true,
+              durationDays: true,
+              price: true,
+              roleName: true,
+            },
+          },
+        },
+      }),
+
+      prisma.userRole.count({
+        where: whereClause,
+      }),
+    ]);
+
+    res.status(200).json({
+      message: "User role applications fetched successfully.",
+      success: true,
+      data: userRoles,
+      pagination: { total, skip: Number(skip), limit: Number(limit) },
+    });
+  } catch (error) {
+    console.error("Error fetching user role applications:", error.message);
+    res.status(500).json({ error: "Failed to fetch applications." });
+  }
+};
