@@ -1,4 +1,3 @@
-import jwt from "jsonwebtoken";
 import prisma from "../../lib/prisma.js";
 const allowedRoles = [
   "homeowner_landlord",
@@ -169,60 +168,75 @@ export const updateRolePackage = async (req, res) => {
   }
 };
 
+// export const getAllRolePackages = async (req, res) => {
+//   const authHeader = req.headers.authorization;
+//   let userId = null;
+
+//   // 🧪 Debug log
+//   console.log("Auth Header:", authHeader);
+
+//   if (authHeader?.startsWith("Bearer ")) {
+//     const token = authHeader.split(" ")[1];
+
+//     try {
+//       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//       userId = decoded.userId;
+//       console.log("✅ Decoded JWT:", decoded);
+//     } catch (err) {
+//       console.warn("❌ Invalid token:", err.message);
+//     }
+//   } else {
+//     if (authHeader) {
+//       console.warn("⚠️ Token format is invalid. Expected 'Bearer <token>'");
+//     } else {
+//       console.info("ℹ️ No token provided. Returning all packages.");
+//     }
+//   }
+
+//   try {
+//     let packages;
+
+//     if (userId) {
+//       // Get only the packages this user has purchased
+//       const userRoles = await prisma.userRole.findMany({
+//         where: { userId },
+//         select: { rolePackageId: true },
+//       });
+
+//       const packageIds = userRoles.map((ur) => ur.rolePackageId);
+
+//       packages = await prisma.rolePackage.findMany({
+//         where: {
+//           id: { in: packageIds },
+//         },
+//         orderBy: { createdAt: "desc" },
+//       });
+
+//       console.log(`🔒 Returning packages for user: ${userId}`);
+//     } else {
+//       // Return all packages
+//       packages = await prisma.rolePackage.findMany({
+//         orderBy: { createdAt: "desc" },
+//       });
+
+//       console.log("🌍 Returning all role packages (public)");
+//     }
+
+//     res.json({
+//       total: packages.length,
+//       data: packages,
+//     });
+//   } catch (error) {
+//     console.error("🔥 Get Role Packages Error:", error.message);
+//     res.status(500).json({ error: "Failed to fetch role packages." });
+//   }
+// };
+
 export const getAllRolePackages = async (req, res) => {
-  const authHeader = req.headers.authorization;
-  let userId = null;
-
-  // 🧪 Debug log
-  console.log("Auth Header:", authHeader);
-
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.split(" ")[1];
-
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      userId = decoded.userId;
-      console.log("✅ Decoded JWT:", decoded);
-    } catch (err) {
-      console.warn("❌ Invalid token:", err.message);
-    }
-  } else {
-    if (authHeader) {
-      console.warn("⚠️ Token format is invalid. Expected 'Bearer <token>'");
-    } else {
-      console.info("ℹ️ No token provided. Returning all packages.");
-    }
-  }
-
   try {
-    let packages;
-
-    if (userId) {
-      // Get only the packages this user has purchased
-      const userRoles = await prisma.userRole.findMany({
-        where: { userId },
-        select: { rolePackageId: true },
-      });
-
-      const packageIds = userRoles.map((ur) => ur.rolePackageId);
-
-      packages = await prisma.rolePackage.findMany({
-        where: {
-          id: { in: packageIds },
-        },
-        orderBy: { createdAt: "desc" },
-      });
-
-      console.log(`🔒 Returning packages for user: ${userId}`);
-    } else {
-      // Return all packages
-      packages = await prisma.rolePackage.findMany({
-        orderBy: { createdAt: "desc" },
-      });
-
-      console.log("🌍 Returning all role packages (public)");
-    }
-
+    const packages = await prisma.rolePackage.findMany({
+      orderBy: { createdAt: "desc" },
+    });
     res.json({
       total: packages.length,
       data: packages,
