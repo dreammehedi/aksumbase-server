@@ -75,7 +75,7 @@ export const createRolePurchaseIntent = async (req, res) => {
 
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
-  let event;
+  let event = req.body;
 
   try {
     const stripe = await stripeConfig(); // returns Stripe instance
@@ -84,11 +84,10 @@ export const handleStripeWebhook = async (req, res) => {
     if (!config || !config.stripeWebhookSecret) {
       throw new Error("Stripe webhook secret not found in DB");
     }
-    // ✅ bodyParser.raw({ type: 'application/json' }) must be used in the route
     event = stripe.webhooks.constructEvent(
-      req.body, // must use `req.body` with bodyParser.raw()
+      req.body,
       sig,
-      config.stripeWebhookSecret
+      config.stripeWebhookSecret || process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
     console.error("❌ Webhook signature verification failed:", err.message);
