@@ -1,4 +1,3 @@
-import bodyParser from "body-parser";
 import { v2 as cloudinary } from "cloudinary";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -69,7 +68,8 @@ const app = express();
 // ✅ Stripe webhook: must use raw BEFORE JSON parser
 app.post(
   "/api/stripe/webhook",
-  bodyParser.raw({ type: "application/json" }),
+  // bodyParser.raw({ type: "application/json" }),
+  express.raw({ type: "application/json" }),
   handleStripeWebhook
 );
 // Set view engine
