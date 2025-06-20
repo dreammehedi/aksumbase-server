@@ -69,12 +69,12 @@ const app = express();
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views")); // Adjust the path if necessary
 
-// stripe webhook api
 app.post(
   "/api/stripe/webhook",
   bodyParser.raw({ type: "application/json" }),
   handleStripeWebhook
 );
+
 // Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -142,16 +142,13 @@ app.get("/api/stripe/session", async (req, res) => {
   const { sessionId } = req.query;
   if (!sessionId) return res.status(400).json({ error: "Session ID required" });
 
-  const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
-
-  if (!config || !config.stripeSecret) {
+  const config = await prisma.stripeConfiguration.findFirst();
+  if (!config?.stripeSecret)
     throw new Error("Stripe secret key not found in DB");
-  }
 
   try {
     const stripe = new Stripe(config.stripeSecret);
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-
     res.json(session);
   } catch (error) {
     console.error("Failed to fetch session:", error);

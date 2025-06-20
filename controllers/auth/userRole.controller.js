@@ -131,19 +131,22 @@ export const createRolePurchaseIntent = async (req, res) => {
     });
   }
 };
+
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
 
   try {
-    const stripe = await stripeConfig();
+    const stripe = await stripeConfig(); // returns Stripe instance
+
+    // ✅ bodyParser.raw({ type: 'application/json' }) must be used in the route
     event = stripe.webhooks.constructEvent(
-      req.rawBody,
+      req.body, // must use `req.body` with bodyParser.raw()
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
+    console.error("❌ Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -155,10 +158,19 @@ export const handleStripeWebhook = async (req, res) => {
     const currency = session.currency;
     const paymentStatus = session.payment_status;
     const stripeId = session.id;
-    const invoiceUrl = session.invoice ? session.invoice : null;
+    const paymentMethod = session.payment_method_types?.[0] || "card";
+
+    let invoiceUrl = null;
 
     try {
-      // Create the user role record
+      // ✅ Fetch hosted invoice URL if invoice ID is present
+      if (session.invoice) {
+        const stripe = await stripeConfig();
+        const invoice = await stripe.invoices.retrieve(session.invoice);
+        invoiceUrl = invoice.hosted_invoice_url;
+      }
+
+      // ✅ Create UserRole entry
       const userRole = await prisma.userRole.create({
         data: {
           userId,
@@ -171,7 +183,7 @@ export const handleStripeWebhook = async (req, res) => {
         },
       });
 
-      // Create transaction
+      // ✅ Create Transaction record
       await prisma.transaction.create({
         data: {
           userId,
@@ -179,19 +191,21 @@ export const handleStripeWebhook = async (req, res) => {
           amount,
           currency,
           status: paymentStatus,
-          method: session.payment_method_types[0] || "card",
+          method: paymentMethod,
           stripeId,
+          invoiceUrl,
         },
       });
 
-      res.status(200).send("Payment and role creation handled successfully");
+      console.log("✅ Webhook handled: session completed");
+      return res.status(200).send("Webhook handled successfully");
     } catch (err) {
-      console.error("Error during webhook handling:", err);
-      res.status(500).send("Internal server error");
+      console.error("❌ Error during webhook handling:", err);
+      return res.status(500).send("Internal server error");
     }
-  } else {
-    res.status(200).send("Webhook event ignored");
   }
+
+  return res.status(200).send("Event ignored");
 };
 
 // export const purchaseRole = async (req, res) => {
