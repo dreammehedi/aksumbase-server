@@ -670,7 +670,7 @@ export const googleLogin = async (req, res) => {
 
     if (!email) {
       return res.redirect(
-        "https://aksumbase-frontend-qsfw.vercel.app/login?error=no_email_found"
+        `${process.env.FRONTEND_LINK}/login?error=no_email_found`
       );
     }
 
@@ -678,13 +678,11 @@ export const googleLogin = async (req, res) => {
       expiresIn: "3d",
     });
 
-    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
+    const frontendURL = `${process.env.FRONTEND_LINK}/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
     res.redirect(frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
-    res.redirect(
-      "https://aksumbase-frontend-qsfw.vercel.app/login?error=login_failed"
-    );
+    res.redirect(`${process.env.FRONTEND_LINK}/login?error=login_failed`);
   }
 };
 
