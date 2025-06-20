@@ -128,7 +128,7 @@ model Transaction {
 model Session {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   userId     String    @db.ObjectId
-  token      String    @unique
+  token      String    
   deviceInfo String // user-agent + IP, etc.
   isActive   Boolean   @default(true)
   lastUsedAt DateTime?

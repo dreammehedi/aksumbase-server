@@ -8,10 +8,12 @@ import session from "express-session";
 import path from "path";
 import { fileURLToPath } from "url";
 // Import routes
+import Stripe from "stripe";
 import passport from "./config/passport.config.js";
 import { handleStripeWebhook } from "./controllers/auth/userRole.controller.js";
 import reminderEmailJob from "./helper/reminderEmailJob.js";
 import roleExpiryChecker from "./helper/roleExpiryChecker.js";
+import prisma from "./lib/prisma.js";
 import {
   AuthenticationRouter,
   AuthRouter,
@@ -134,6 +136,29 @@ app.post(
   bodyParser.raw({ type: "application/json" }),
   handleStripeWebhook
 );
+
+// In your express app or router file
+
+app.get("/api/stripe/session", async (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId) return res.status(400).json({ error: "Session ID required" });
+
+  const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
+
+  if (!config || !config.stripeSecret) {
+    throw new Error("Stripe secret key not found in DB");
+  }
+
+  try {
+    const stripe = new Stripe(config.stripeSecret);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    res.json(session);
+  } catch (error) {
+    console.error("Failed to fetch session:", error);
+    res.status(500).json({ error: "Failed to fetch session" });
+  }
+});
 
 // routes
 app.use("/api", HeroBannerRouter);
