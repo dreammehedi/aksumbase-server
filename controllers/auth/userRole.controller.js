@@ -76,7 +76,10 @@ export const createRolePurchaseIntent = async (req, res) => {
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event = req.body;
-
+  console.log(
+    event,
+    "event, 'dsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjj"
+  );
   try {
     const stripe = await stripeConfig(); // returns Stripe instance
     const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
