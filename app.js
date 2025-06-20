@@ -65,17 +65,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-// Set view engine
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views")); // Adjust the path if necessary
 
+// ✅ Stripe webhook: must use raw BEFORE JSON parser
 app.post(
   "/api/stripe/webhook",
   bodyParser.raw({ type: "application/json" }),
   handleStripeWebhook
 );
+// Set view engine
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views")); // Adjust the path if necessary
 
-// Middleware
+// ✅ JSON/body parsers (after webhook)
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
