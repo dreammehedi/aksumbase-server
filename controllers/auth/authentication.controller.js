@@ -678,7 +678,7 @@ export const googleLogin = async (req, res) => {
       expiresIn: "3d",
     });
 
-    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}`;
+    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
     res.redirect(frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
