@@ -17,20 +17,13 @@ UserRoleRouter.post(
   createRolePurchaseIntent
 );
 
-// UserRoleRouter.post(
-//   "/purchase",
-//   verifyToken,
-//   upload.single("image"),
-//   purchaseRole
-// );
 UserRoleRouter.post(
-  "/admin/activate",
+  "/admin/role-activate",
   verifyToken,
   verifyAdminOld,
   upload.none(),
   activateRole
 );
-// UserRoleRouter.post("/pause", verifyToken, pauseRole);
 UserRoleRouter.post("/renew", verifyToken, upload.none(), renewRole);
 UserRoleRouter.get(
   "/get-role-applications",

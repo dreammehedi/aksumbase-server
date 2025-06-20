@@ -474,6 +474,7 @@ export const getAllUserRoleApplications = async (req, res) => {
               username: true,
               phone: true,
               bio: true,
+              role: true,
             },
           },
           rolePackage: {
@@ -483,6 +484,18 @@ export const getAllUserRoleApplications = async (req, res) => {
               durationDays: true,
               price: true,
               roleName: true,
+            },
+          },
+          transaction: {
+            select: {
+              id: true,
+              amount: true,
+              currency: true,
+              method: true,
+              invoiceUrl: true,
+              stripeId: true,
+              createdAt: true,
+              status: true,
             },
           },
         },

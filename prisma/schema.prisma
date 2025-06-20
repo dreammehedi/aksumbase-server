@@ -47,6 +47,7 @@ model User {
   avatarPublicId      String?
   phone               String?
   bio                 String?
+  previousRole        String?
   role                String    @default("user")
   isAdmin             Boolean   @default(false)
   status              Status    @default(pending)
