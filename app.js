@@ -69,6 +69,12 @@ const app = express();
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views")); // Adjust the path if necessary
 
+// stripe webhook api
+app.post(
+  "/api/stripe/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
 // Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -129,13 +135,6 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-// stripe webhook api
-app.post(
-  "/api/stripe/webhook",
-  bodyParser.raw({ type: "application/json" }),
-  handleStripeWebhook
-);
 
 // In your express app or router file
 
