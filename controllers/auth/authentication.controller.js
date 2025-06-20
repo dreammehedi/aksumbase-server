@@ -674,9 +674,31 @@ export const googleLogin = async (req, res) => {
       );
     }
 
-    const token = jwt.sign({ email, id }, process.env.JWT_SECRET, {
-      expiresIn: "3d",
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+    // Step 1: Create session
+    const session = await prisma.session.create({
+      data: {
+        userId: id,
+        token: "temp",
+        deviceInfo,
+        expiresAt,
+      },
     });
+
+    const token = jwt.sign(
+      {
+        userId: id,
+        email: email,
+        sessionId: session.id,
+        role: role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "3d",
+      }
+    );
 
     const frontendURL = `${process.env.FRONTEND_LINK}/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
     res.redirect(frontendURL);
