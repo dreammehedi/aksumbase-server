@@ -666,7 +666,7 @@ export const getUserProfile = async (req, res) => {
 export const googleLogin = async (req, res) => {
   try {
     // Email and role are available on req.user from passport
-    const { email, role = "user", id } = req.user;
+    const { email, role = "user", id, username, status } = req.user;
 
     if (!email) {
       return res.redirect(
@@ -678,7 +678,7 @@ export const googleLogin = async (req, res) => {
       expiresIn: "3d",
     });
 
-    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}`;
+    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
     res.redirect(frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
