@@ -271,6 +271,21 @@ model EmailConfiguration {
   updatedAt       DateTime @updatedAt
 }
 
+// stripe configuration
+model StripeConfiguration {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  emailMailer     String
+  emailHost       String
+  emailPort       Int
+  emailUserName   String
+  emailPassword   String
+  emailEncryption String
+  emailFromName   String
+  emailAddress    String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 // Seller Resources
 model SellerResources {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
