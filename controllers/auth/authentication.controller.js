@@ -665,13 +665,19 @@ export const getUserProfile = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
   try {
-    const token = jwt.sign({ email: newUser.email }, process.env.JWT_SECRET, {
+    // Email and role are available on req.user from passport
+    const { email, role = "user", id } = req.user;
+
+    if (!email) {
+      return res.redirect(
+        "https://aksumbase-frontend-qsfw.vercel.app/login?error=no_email_found"
+      );
+    }
+
+    const token = jwt.sign({ email, id }, process.env.JWT_SECRET, {
       expiresIn: "3d",
     });
 
-    const role = req.user.role || "user";
-
-    // Redirect to the frontend with token and role in the query string
     const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}`;
     res.redirect(frontendURL);
   } catch (error) {
