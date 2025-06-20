@@ -1,5 +1,65 @@
 import dayjs from "dayjs"; // For date manipulation
+import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
+
+export const createRolePurchaseIntent = async (req, res) => {
+  try {
+    const stripe = await stripeConfig(); // ✅ secret key used here
+
+    const { rolePackageId, currency = "usd", metadata = {} } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized user." });
+    }
+
+    if (!rolePackageId) {
+      return res.status(400).json({
+        error: "Required field: rolePackageId.",
+      });
+    }
+
+    const rolePackage = await prisma.rolePackage.findUnique({
+      where: { id: rolePackageId },
+    });
+
+    if (!rolePackage || !rolePackage?.price) {
+      return res.status(404).json({ error: "Role package not found." });
+    }
+
+    const existingActiveRole = await prisma.userRole.findFirst({
+      where: {
+        userId,
+        isExpired: false,
+      },
+    });
+
+    if (existingActiveRole) {
+      return res.status(400).json({
+        error:
+          "You already have an active or pending role package. Please wait until it expires or gets reviewed.",
+      });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round((rolePackage.price || 0) * 100),
+      currency,
+      metadata,
+    });
+
+    res.status(200).json({
+      success: true,
+      clientSecret: paymentIntent?.client_secret,
+    });
+  } catch (err) {
+    console.error("Stripe error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Payment failed",
+      error: err.message,
+    });
+  }
+};
 
 export const purchaseRole = async (req, res) => {
   const { rolePackageId, message } = req.body;

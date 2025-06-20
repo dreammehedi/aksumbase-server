@@ -2,6 +2,7 @@ import express from "express";
 import { upload } from "../../config/upload.js";
 import {
   activateRole,
+  createRolePurchaseIntent,
   getAllUserRoleApplications,
   purchaseRole,
   renewRole,
@@ -9,6 +10,13 @@ import {
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
 const UserRoleRouter = express.Router();
+
+UserRoleRouter.post(
+  "/purchase-intent",
+  verifyToken,
+  upload.none(),
+  createRolePurchaseIntent
+);
 
 UserRoleRouter.post(
   "/purchase",

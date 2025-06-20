@@ -1,20 +1,18 @@
+// stripeConfig.js
 import Stripe from "stripe";
-import { StripePaymentConfig } from "../models/siteConfiguration.model.js";
+import prisma from "../lib/prisma.js";
 
 const stripeConfig = async () => {
-  try {
-    // Fetch Stripe configuration from the database
-    const stripeConfigData = await StripePaymentConfig.findOne();
+  const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
 
-    if (!stripeConfigData || !stripeConfigData.stripeSecret) {
-      throw new Error("Stripe secret key not found in database.");
-    }
-
-    // Initialize Stripe instance
-    return new Stripe(stripeConfigData.stripeSecret);
-  } catch (error) {
-    throw new Error("Failed to initialize Stripe.");
+  console.log(config, "congi");
+  if (!config || !config.stripeSecret) {
+    throw new Error("Stripe secret key not found in DB");
   }
+
+  return new Stripe(config.stripeSecret, {
+    apiVersion: "2024-04-10", // or latest Stripe API version
+  });
 };
 
 export default stripeConfig;
