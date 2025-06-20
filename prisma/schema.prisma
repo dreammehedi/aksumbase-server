@@ -288,6 +288,7 @@ model StripeConfiguration {
   stripeKey    String
   stripeSecret String
   stripeMethod String
+  stripeWebhookSecret String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
