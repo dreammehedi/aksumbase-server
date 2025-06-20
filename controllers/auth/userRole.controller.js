@@ -138,12 +138,16 @@ export const handleStripeWebhook = async (req, res) => {
 
   try {
     const stripe = await stripeConfig(); // returns Stripe instance
+    const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
 
+    if (!config || !config.stripeWebhookSecret) {
+      throw new Error("Stripe webhook secret not found in DB");
+    }
     // ✅ bodyParser.raw({ type: 'application/json' }) must be used in the route
     event = stripe.webhooks.constructEvent(
       req.body, // must use `req.body` with bodyParser.raw()
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET
+      config.stripeWebhookSecret
     );
   } catch (err) {
     console.error("❌ Webhook signature verification failed:", err.message);
