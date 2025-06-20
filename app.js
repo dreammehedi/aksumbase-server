@@ -1,3 +1,4 @@
+import bodyParser from "body-parser";
 import { v2 as cloudinary } from "cloudinary";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -8,6 +9,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 // Import routes
 import passport from "./config/passport.config.js";
+import { handleStripeWebhook } from "./controllers/auth/userRole.controller.js";
 import reminderEmailJob from "./helper/reminderEmailJob.js";
 import roleExpiryChecker from "./helper/roleExpiryChecker.js";
 import {
@@ -125,6 +127,13 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// stripe webhook api
+app.post(
+  "/api/stripe/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
 
 // routes
 app.use("/api", HeroBannerRouter);

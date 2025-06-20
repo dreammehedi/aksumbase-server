@@ -5,7 +5,6 @@ import prisma from "../lib/prisma.js";
 const stripeConfig = async () => {
   const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
 
-  console.log(config, "congi");
   if (!config || !config.stripeSecret) {
     throw new Error("Stripe secret key not found in DB");
   }
