@@ -665,20 +665,46 @@ export const getUserProfile = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
   try {
-    const token = jwt.sign({ email: newUser.email }, process.env.JWT_SECRET, {
-      expiresIn: "3d",
+    // Email and role are available on req.user from passport
+    const { email, role = "user", id, username, status } = req.user;
+
+    if (!email) {
+      return res.redirect(
+        `${process.env.FRONTEND_LINK}/login?error=no_email_found`
+      );
+    }
+
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+    // Step 1: Create session
+    const session = await prisma.session.create({
+      data: {
+        userId: id,
+        token: "temp",
+        deviceInfo,
+        expiresAt,
+      },
     });
 
-    const role = req.user.role || "user";
+    const token = jwt.sign(
+      {
+        userId: id,
+        email: email,
+        sessionId: session.id,
+        role: role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "3d",
+      }
+    );
 
-    // Redirect to the frontend with token and role in the query string
-    const frontendURL = `https://aksumbase-frontend-qsfw.vercel.app/auth/google/callback?token=${token}&role=${role}`;
+    const frontendURL = `${process.env.FRONTEND_LINK}/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
     res.redirect(frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
-    res.redirect(
-      "https://aksumbase-frontend-qsfw.vercel.app/login?error=login_failed"
-    );
+    res.redirect(`${process.env.FRONTEND_LINK}/login?error=login_failed`);
   }
 };
 

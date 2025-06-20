@@ -51,7 +51,7 @@ AuthRouter.get(
 AuthRouter.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: "https://aksumbase-frontend-qsfw.vercel.app/login",
+    failureRedirect: `${process.env.FRONTEND_LINK}/login`,
   }),
   googleLogin
 );

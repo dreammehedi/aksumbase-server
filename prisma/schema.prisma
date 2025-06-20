@@ -28,7 +28,7 @@ model Notification {
 
 model RolePackage {
   id           String     @id @default(auto()) @map("_id") @db.ObjectId
-  name         String     
+  name         String
   roleName     RoleName
   price        Float
   durationDays Int
@@ -37,36 +37,6 @@ model RolePackage {
   updatedAt    DateTime   @updatedAt
   userRoles    UserRole[]
 }
-
-
-enum RoleName {
-  homeowner_landlord
-  agent_broker
-  loan_officer
-  property_manager
-}
-
-model UserRole {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String   @db.ObjectId
-  rolePackageId String   @db.ObjectId
-  startDate     DateTime?
-  endDate       DateTime?
-  isActive      Boolean  @default(false)
-  isPaused      Boolean  @default(false)
-  isExpired     Boolean  @default(false)
-  image         String?
-  imagePublicId String?
-  message       String?     
-  isVerified    Boolean  @default(false)
-  verifiedAt    DateTime?   
-  verifiedBy    String?    
-  createdAt     DateTime @default(now())
-
-  user        User        @relation(fields: [userId], references: [id])
-  rolePackage RolePackage @relation(fields: [rolePackageId], references: [id])
-}
-
 
 model User {
   id                  String    @id @default(auto()) @map("_id") @db.ObjectId
@@ -77,7 +47,8 @@ model User {
   avatarPublicId      String?
   phone               String?
   bio                 String?
-  role                String    @default("user") // could replace with enum if strict
+  previousRole        String?
+  role                String    @default("user")
   isAdmin             Boolean   @default(false)
   status              Status    @default(pending)
   resetCode           String?
@@ -94,16 +65,16 @@ model User {
   reputationHistory Json?
 
   // Relations
-  notifications Notification[]
-  userRoles     UserRole[]
-  sessions      Session[]
-
+  notifications              Notification[]
+  userRoles                  UserRole[]
+  sessions                   Session[]
   property                   Property[]
   reviews                    Review[]
   Bookmark                   Bookmark[]
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]
   PropertyContactUserRequest PropertyContactUserRequest[]
+  transactions               Transaction[] // 1:M User → Transaction
 }
 
 enum Status {
@@ -112,10 +83,54 @@ enum Status {
   pending
 }
 
+enum RoleName {
+  homeowner_landlord
+  agent_broker
+  loan_officer
+  property_manager
+}
+
+model UserRole {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  rolePackageId String    @db.ObjectId
+  startDate     DateTime?
+  endDate       DateTime?
+  isActive      Boolean   @default(false)
+  isPaused      Boolean   @default(false)
+  isExpired     Boolean   @default(false)
+  message       String?
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime?
+  verifiedBy    String?
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id])
+  rolePackage RolePackage  @relation(fields: [rolePackageId], references: [id])
+  transaction Transaction? @relation() // 👈 1:1 (no fields/references here)
+}
+
+model Transaction {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  userRoleId String   @unique @db.ObjectId
+  amount     Float
+  currency   String
+  status     String // e.g., "succeeded", "failed"
+  method     String? // e.g., "card"
+  stripeId   String // Stripe session ID or payment intent ID
+  invoiceUrl String?
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  userRole UserRole @relation(fields: [userRoleId], references: [id])
+}
+
 model Session {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   userId     String    @db.ObjectId
-  token      String    @unique
+  token      String    
   deviceInfo String // user-agent + IP, etc.
   isActive   Boolean   @default(true)
   lastUsedAt DateTime?
@@ -129,21 +144,19 @@ model Session {
 }
 
 model Review {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  propertyId  String   @db.ObjectId
-  userId      String   @db.ObjectId
-  rating      Int      // from 1 to 5
-  images      Json?
-  comment     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId String   @db.ObjectId
+  userId     String   @db.ObjectId
+  rating     Int // from 1 to 5
+  images     Json?
+  comment    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
-  property    Property @relation(fields: [propertyId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
 }
-
-
 
 // hero banner
 model HeroBanner {
@@ -269,6 +282,17 @@ model EmailConfiguration {
   emailAddress    String   @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// stripe configuration
+model StripeConfiguration {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  stripeKey    String
+  stripeSecret String
+  stripeMethod String
+  stripeWebhookSecret String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // Seller Resources

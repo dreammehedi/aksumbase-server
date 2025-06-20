@@ -1,3 +1,4 @@
+import bodyParser from "body-parser";
 import { v2 as cloudinary } from "cloudinary";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -7,9 +8,12 @@ import session from "express-session";
 import path from "path";
 import { fileURLToPath } from "url";
 // Import routes
+import Stripe from "stripe";
 import passport from "./config/passport.config.js";
+import { handleStripeWebhook } from "./controllers/auth/userRole.controller.js";
 import reminderEmailJob from "./helper/reminderEmailJob.js";
 import roleExpiryChecker from "./helper/roleExpiryChecker.js";
+import prisma from "./lib/prisma.js";
 import {
   AuthenticationRouter,
   AuthRouter,
@@ -25,6 +29,7 @@ import BlogRouter from "./routes/other/blog.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
 import OtherRouter from "./routes/other/other.route.js";
 import SellerResourcesRouter from "./routes/other/sellerResources.route.js";
+import StripeConfigurationRouter from "./routes/other/stripeConfiguration.route.js";
 import { default as PropertyRouter } from "./routes/property/property.route.js";
 import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js";
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
@@ -60,11 +65,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// ✅ Stripe webhook: must use raw BEFORE JSON parser
+app.post(
+  "/api/stripe/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
 // Set view engine
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views")); // Adjust the path if necessary
 
-// Middleware
+// ✅ JSON/body parsers (after webhook)
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
@@ -125,6 +137,26 @@ app.get("/health", (req, res) => {
   });
 });
 
+// In your express app or router file
+
+app.get("/api/stripe/session", async (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId) return res.status(400).json({ error: "Session ID required" });
+
+  const config = await prisma.stripeConfiguration.findFirst();
+  if (!config?.stripeSecret)
+    throw new Error("Stripe secret key not found in DB");
+
+  try {
+    const stripe = new Stripe(config.stripeSecret);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    res.json(session);
+  } catch (error) {
+    console.error("Failed to fetch session:", error);
+    res.status(500).json({ error: "Failed to fetch session" });
+  }
+});
+
 // routes
 app.use("/api", HeroBannerRouter);
 app.use("/api", MarketTrendsRouter);
@@ -143,6 +175,7 @@ app.use("/api", DashboardRouter);
 app.use("/api", PropertyBookmarkRouter);
 app.use("/api", PropertyTourRequestRouter);
 app.use("/api", PropertyContactUserRequestRouter);
+app.use("/api", StripeConfigurationRouter);
 
 // Start cron job
 roleExpiryChecker();
