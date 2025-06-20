@@ -2,140 +2,273 @@ import dayjs from "dayjs"; // For date manipulation
 import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
 
+// export const createRolePurchaseIntent = async (req, res) => {
+//   try {
+//     const stripe = await stripeConfig(); // ✅ secret key used here
+
+//     const { rolePackageId, currency = "usd", metadata = {} } = req.body;
+//     const userId = req.userId;
+
+//     if (!userId) {
+//       return res.status(401).json({ message: "Unauthorized user." });
+//     }
+
+//     if (!rolePackageId) {
+//       return res.status(400).json({
+//         error: "Required field: rolePackageId.",
+//       });
+//     }
+
+//     const rolePackage = await prisma.rolePackage.findUnique({
+//       where: { id: rolePackageId },
+//     });
+
+//     if (!rolePackage || !rolePackage?.price) {
+//       return res.status(404).json({ error: "Role package not found." });
+//     }
+
+//     const existingActiveRole = await prisma.userRole.findFirst({
+//       where: {
+//         userId,
+//         isExpired: false,
+//       },
+//     });
+
+//     if (existingActiveRole) {
+//       return res.status(400).json({
+//         error:
+//           "You already have an active or pending role package. Please wait until it expires or gets reviewed.",
+//       });
+//     }
+
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: Math.round((rolePackage.price || 0) * 100),
+//       currency,
+//       metadata,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       clientSecret: paymentIntent?.client_secret,
+//     });
+//   } catch (err) {
+//     console.error("Stripe error:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Payment failed",
+//       error: err.message,
+//     });
+//   }
+// };
+
 export const createRolePurchaseIntent = async (req, res) => {
   try {
-    const stripe = await stripeConfig(); // ✅ secret key used here
-
+    const stripe = await stripeConfig();
     const { rolePackageId, currency = "usd", metadata = {} } = req.body;
     const userId = req.userId;
 
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized user." });
-    }
+    if (!userId) return res.status(401).json({ message: "Unauthorized user." });
 
     if (!rolePackageId) {
-      return res.status(400).json({
-        error: "Required field: rolePackageId.",
-      });
+      return res.status(400).json({ error: "Required field: rolePackageId." });
     }
 
     const rolePackage = await prisma.rolePackage.findUnique({
       where: { id: rolePackageId },
     });
 
-    if (!rolePackage || !rolePackage?.price) {
+    if (!rolePackage || !rolePackage.price) {
       return res.status(404).json({ error: "Role package not found." });
     }
 
     const existingActiveRole = await prisma.userRole.findFirst({
-      where: {
-        userId,
-        isExpired: false,
-      },
+      where: { userId, isExpired: false },
     });
 
     if (existingActiveRole) {
       return res.status(400).json({
-        error:
-          "You already have an active or pending role package. Please wait until it expires or gets reviewed.",
+        error: "You already have an active or pending role package.",
       });
     }
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round((rolePackage.price || 0) * 100),
-      currency,
-      metadata,
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      customer_email: req.userEmail, // optional, if you have user's email
+      line_items: [
+        {
+          price_data: {
+            currency,
+            product_data: {
+              name: rolePackage.name,
+              description: rolePackage.roleName,
+            },
+            unit_amount: Math.round(rolePackage.price * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        userId,
+        rolePackageId,
+        ...metadata,
+      },
+      invoice_creation: { enabled: true }, // ✅ Enable invoice
+      success_url: `${process.env.FRONTEND_LINK}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_LINK}/payment-cancelled`,
     });
 
     res.status(200).json({
       success: true,
-      clientSecret: paymentIntent?.client_secret,
+      url: session.url,
     });
   } catch (err) {
     console.error("Stripe error:", err);
     res.status(500).json({
       success: false,
-      message: "Payment failed",
+      message: "Checkout session creation failed",
       error: err.message,
     });
   }
 };
-
-export const purchaseRole = async (req, res) => {
-  const { rolePackageId, message } = req.body;
-  const userId = req.userId;
-
-  // 1. Auth check
-  if (!userId) {
-    return res.status(401).json({ message: "Unauthorized user." });
-  }
-
-  // 2. Role package ID check
-  if (!rolePackageId) {
-    return res.status(400).json({
-      error: "Required fields: rolePackageId.",
-    });
-  }
-
-  // 3. Image file check (assuming middleware: upload.single('image'))
-  const imageFile = req.file;
-  if (!imageFile) {
-    return res.status(400).json({
-      success: false,
-      message: "Image is required.",
-    });
-  }
+export const handleStripeWebhook = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
 
   try {
-    // 4. Check if the role package exists
-    const rolePackage = await prisma.rolePackage.findUnique({
-      where: { id: rolePackageId },
-    });
+    const stripe = await stripeConfig();
+    event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
 
-    if (!rolePackage) {
-      return res.status(404).json({ error: "Role package not found." });
-    }
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
 
-    // 5. Check if user already has an active or pending role (not expired)
-    const existingActiveRole = await prisma.userRole.findFirst({
-      where: {
-        userId,
-        isExpired: false, // still active or awaiting verification
-      },
-    });
+    const { userId, rolePackageId } = session.metadata;
+    const amount = session.amount_total / 100;
+    const currency = session.currency;
+    const paymentStatus = session.payment_status;
+    const stripeId = session.id;
+    const invoiceUrl = session.invoice ? session.invoice : null;
 
-    if (existingActiveRole) {
-      return res.status(400).json({
-        error:
-          "You already have an active or pending role package. Please wait until it expires or gets reviewed.",
+    try {
+      // Create the user role record
+      const userRole = await prisma.userRole.create({
+        data: {
+          userId,
+          rolePackageId,
+          message: null,
+          isActive: false,
+          isPaused: false,
+          isExpired: false,
+          isVerified: false,
+        },
       });
+
+      // Create transaction
+      await prisma.transaction.create({
+        data: {
+          userId,
+          userRoleId: userRole.id,
+          amount,
+          currency,
+          status: paymentStatus,
+          method: session.payment_method_types[0] || "card",
+          stripeId,
+        },
+      });
+
+      res.status(200).send("Payment and role creation handled successfully");
+    } catch (err) {
+      console.error("Error during webhook handling:", err);
+      res.status(500).send("Internal server error");
     }
-
-    // 6. Create new userRole with image
-    const newUserRole = await prisma.userRole.create({
-      data: {
-        userId,
-        rolePackageId,
-        message: message || null,
-        image: imageFile.path,
-        imagePublicId: imageFile.filename,
-        isActive: false,
-        isPaused: false,
-        isExpired: false,
-        isVerified: false,
-      },
-    });
-
-    // 7. Respond success
-    res.status(201).json({
-      message: "Your request has been submitted for verification.",
-      data: newUserRole,
-    });
-  } catch (error) {
-    console.error("Purchase Role Error:", error.message);
-    res.status(500).json({ error: "Failed to submit role purchase." });
+  } else {
+    res.status(200).send("Webhook event ignored");
   }
 };
+
+// export const purchaseRole = async (req, res) => {
+//   const { rolePackageId, message } = req.body;
+//   const userId = req.userId;
+
+//   // 1. Auth check
+//   if (!userId) {
+//     return res.status(401).json({ message: "Unauthorized user." });
+//   }
+
+//   // 2. Role package ID check
+//   if (!rolePackageId) {
+//     return res.status(400).json({
+//       error: "Required fields: rolePackageId.",
+//     });
+//   }
+
+//   // 3. Image file check (assuming middleware: upload.single('image'))
+//   const imageFile = req.file;
+//   if (!imageFile) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Image is required.",
+//     });
+//   }
+
+//   try {
+//     // 4. Check if the role package exists
+//     const rolePackage = await prisma.rolePackage.findUnique({
+//       where: { id: rolePackageId },
+//     });
+
+//     if (!rolePackage) {
+//       return res.status(404).json({ error: "Role package not found." });
+//     }
+
+//     // 5. Check if user already has an active or pending role (not expired)
+//     const existingActiveRole = await prisma.userRole.findFirst({
+//       where: {
+//         userId,
+//         isExpired: false, // still active or awaiting verification
+//       },
+//     });
+
+//     if (existingActiveRole) {
+//       return res.status(400).json({
+//         error:
+//           "You already have an active or pending role package. Please wait until it expires or gets reviewed.",
+//       });
+//     }
+
+//     // 6. Create new userRole with image
+//     const newUserRole = await prisma.userRole.create({
+//       data: {
+//         userId,
+//         rolePackageId,
+//         message: message || null,
+//         image: imageFile.path,
+//         imagePublicId: imageFile.filename,
+//         isActive: false,
+//         isPaused: false,
+//         isExpired: false,
+//         isVerified: false,
+//       },
+//     });
+
+//     // 7. Respond success
+//     res.status(201).json({
+//       message: "Your request has been submitted for verification.",
+//       data: newUserRole,
+//     });
+//   } catch (error) {
+//     console.error("Purchase Role Error:", error.message);
+//     res.status(500).json({ error: "Failed to submit role purchase." });
+//   }
+// };
 
 export const activateRole = async (req, res) => {
   const { userId, rolePackageId } = req.body;

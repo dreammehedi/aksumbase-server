@@ -4,7 +4,6 @@ import {
   activateRole,
   createRolePurchaseIntent,
   getAllUserRoleApplications,
-  purchaseRole,
   renewRole,
 } from "../../controllers/auth/userRole.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -18,12 +17,12 @@ UserRoleRouter.post(
   createRolePurchaseIntent
 );
 
-UserRoleRouter.post(
-  "/purchase",
-  verifyToken,
-  upload.single("image"),
-  purchaseRole
-);
+// UserRoleRouter.post(
+//   "/purchase",
+//   verifyToken,
+//   upload.single("image"),
+//   purchaseRole
+// );
 UserRoleRouter.post(
   "/admin/activate",
   verifyToken,
