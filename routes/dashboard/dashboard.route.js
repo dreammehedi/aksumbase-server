@@ -11,6 +11,7 @@ import {
   getUserRecentActivity,
   getUserReviews,
   getUserRolePackagePurchase,
+  getUsersByRole,
   getUserSession,
   renewRole,
   updateMultiplePropertyStatus,
@@ -132,4 +133,6 @@ DashboardRouter.get(
   verifyToken,
   getUserRecentActivity
 );
+
+DashboardRouter.get("/user/by-role", getUsersByRole);
 export default DashboardRouter;
