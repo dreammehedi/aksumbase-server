@@ -472,7 +472,7 @@ export const resetPassword = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { email, ...otherFields } = req.body;
+    const { email, isNotificationEnabled, ...otherFields } = req.body;
 
     if (!email) {
       return res.status(400).json({
@@ -481,7 +481,6 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    // Find user by email
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
@@ -491,19 +490,22 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    const updatedFields = { ...otherFields };
+    const updatedFields = {
+      ...otherFields,
+      ...(typeof isNotificationEnabled !== "undefined" && {
+        isNotificationEnabled:
+          isNotificationEnabled === true || isNotificationEnabled === "true",
+      }),
+    };
 
     // Handle image upload
     if (req.file) {
       try {
-        // Delete previous image from Cloudinary
         if (user.avatarPublicId) {
           await cloudinary.uploader.destroy(user.avatarPublicId);
         }
 
-        // Upload new image to Cloudinary
         const cloudinaryResult = req.file;
-
         updatedFields.avatar = cloudinaryResult.path;
         updatedFields.avatarPublicId = cloudinaryResult.filename;
       } catch (imageError) {
@@ -515,7 +517,6 @@ export const updateProfile = async (req, res) => {
       }
     }
 
-    // Update user in DB
     await prisma.user.update({
       where: { email },
       data: updatedFields,
@@ -532,6 +533,7 @@ export const updateProfile = async (req, res) => {
     });
   }
 };
+
 export const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword, passwordConfirmation, email } = req.body;

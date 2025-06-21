@@ -819,11 +819,6 @@ export const getPropertyByUser = async (req, res) => {
     if (!userId)
       return res.status(400).json({ message: "User ID not found from token." });
 
-    if (!userEmail)
-      return res
-        .status(400)
-        .json({ message: "User Email not found from token." });
-
     // 3. Get filters
     const { skip = 0, limit = 10 } = req.pagination || {};
     const search = req.query.search || "";
@@ -848,7 +843,6 @@ export const getPropertyByUser = async (req, res) => {
 
     const where = {
       AND: [
-        { status: { equals: "approved" } },
         { userId: { equals: userId } }, // ✅ This limits results to properties added by the user
         {
           OR: [
