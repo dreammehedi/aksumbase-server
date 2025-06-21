@@ -384,3 +384,66 @@ export const handleRolePackageFrontendSuccess = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getUserRolePackagePurchase = async (req, res) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized access." });
+  }
+
+  try {
+    const userRole = await prisma.userRole.findFirst({
+      where: { userId: userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            phone: true,
+            bio: true,
+            role: true,
+          },
+        },
+        rolePackage: {
+          select: {
+            id: true,
+            name: true,
+            durationDays: true,
+            price: true,
+            roleName: true,
+          },
+        },
+        transaction: {
+          select: {
+            id: true,
+            amount: true,
+            currency: true,
+            method: true,
+            invoiceUrl: true,
+            stripeId: true,
+            createdAt: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!userRole) {
+      return res
+        .status(404)
+        .json({ error: "No role package found for this user." });
+    }
+
+    res.status(200).json({
+      message: "User role package fetched successfully.",
+      success: true,
+      data: userRole,
+    });
+  } catch (error) {
+    console.error("Error fetching user role package:", error.message);
+    res.status(500).json({ error: "Failed to fetch user role package." });
+  }
+};

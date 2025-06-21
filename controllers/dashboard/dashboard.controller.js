@@ -168,6 +168,54 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
   }
 };
 
+export const getUserSession = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+
+    const session = await prisma.session.findMany({
+      where: {
+        userId,
+      },
+      orderBy: { createdAt: "desc" }, // get latest session
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Session not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: session,
+    });
+  } catch (error) {
+    console.error("Get user session error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user session",
+    });
+  }
+};
+
 export const getAllProperty = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};
@@ -455,7 +503,6 @@ export const getAllUserRoleApplications = async (req, res) => {
           OR: [
             { user: { username: { contains: search, mode: "insensitive" } } },
             { user: { email: { contains: search, mode: "insensitive" } } },
-            { user: { phone: { contains: search, mode: "insensitive" } } },
           ],
         }
       : {};

@@ -4,6 +4,7 @@ import {
   activateRole,
   createRolePurchaseIntent,
   getAllUserRoleApplications,
+  getUserRolePackagePurchase,
   handleRolePackageFrontendSuccess,
   renewRole,
 } from "../../controllers/auth/userRole.controller.js";
@@ -36,6 +37,12 @@ UserRoleRouter.get(
   "/role-package-payment-success",
   verifyToken,
   handleRolePackageFrontendSuccess
+);
+
+UserRoleRouter.get(
+  "/user/role-package-purchase",
+  verifyToken,
+  getUserRolePackagePurchase
 );
 
 export default UserRoleRouter;

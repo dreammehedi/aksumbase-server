@@ -6,6 +6,7 @@ import {
   getAllUserRoleApplications,
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
+  getUserSession,
   updateMultiplePropertyStatus,
   userRequestTour,
 } from "../../controllers/dashboard/dashboard.controller.js";
@@ -37,6 +38,8 @@ DashboardRouter.get(
   paginationMiddleware,
   getAllUsersSessionByAdmin
 );
+
+DashboardRouter.get("/user/users-session", verifyToken, getUserSession);
 
 DashboardRouter.get(
   "/admin/all-property",
