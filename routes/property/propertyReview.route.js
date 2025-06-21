@@ -4,7 +4,6 @@ import {
   addReview,
   deleteReview,
   getPropertyReviews,
-  getUserReviews,
   updateReview,
 } from "../../controllers/property/propertyReview.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
@@ -40,14 +39,6 @@ PropertyReviewRouter.get(
   "/property/:propertyId/reviews",
   paginationMiddleware,
   getPropertyReviews
-);
-
-// Get all reviews by the logged-in user
-PropertyReviewRouter.get(
-  "/user/property/reviews",
-  verifyToken,
-  paginationMiddleware,
-  getUserReviews
 );
 
 export default PropertyReviewRouter;

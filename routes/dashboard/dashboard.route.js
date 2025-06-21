@@ -1,4 +1,5 @@
 import express from "express";
+import { upload } from "../../config/upload.js";
 import {
   adminRequestPropertyContactUser,
   getAdminDashboardOverview,
@@ -6,8 +7,13 @@ import {
   getAllUserRoleApplications,
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
+  getPropertyByUser,
+  getUserReviews,
+  getUserRolePackagePurchase,
   getUserSession,
+  renewRole,
   updateMultiplePropertyStatus,
+  userRequestPropertyContactUser,
   userRequestTour,
 } from "../../controllers/dashboard/dashboard.controller.js";
 import { paginationMiddleware } from "../../middleware/pagination.middleware.js";
@@ -16,6 +22,7 @@ import { verifyToken } from "../../middleware/verifyToken.js";
 
 const DashboardRouter = express.Router();
 
+// admin route
 DashboardRouter.get(
   "/admin/dashboard",
   verifyToken,
@@ -81,4 +88,41 @@ DashboardRouter.get(
   getAllUserRoleApplications
 );
 
+// user route
+DashboardRouter.get(
+  "/user/role-package-purchase",
+  verifyToken,
+  getUserRolePackagePurchase
+);
+
+DashboardRouter.get(
+  "/user/property",
+  verifyToken,
+  paginationMiddleware,
+  getPropertyByUser
+);
+
+DashboardRouter.post("/user/role-renew", verifyToken, upload.none(), renewRole);
+
+DashboardRouter.get(
+  "/user/property/contact-user",
+  verifyToken,
+  paginationMiddleware,
+  userRequestPropertyContactUser
+);
+
+// Get all reviews by the logged-in user
+DashboardRouter.get(
+  "/user/property/reviews",
+  verifyToken,
+  paginationMiddleware,
+  getUserReviews
+);
+
+DashboardRouter.get(
+  "/user/property/tour-request",
+  verifyToken,
+  paginationMiddleware,
+  userRequestTour
+);
 export default DashboardRouter;

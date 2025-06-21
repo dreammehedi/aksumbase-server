@@ -5,7 +5,6 @@ import {
   deleteProperty,
   getProperty,
   getPropertyBySlug,
-  getPropertyByUser,
   getRecentPropertyViews,
   property,
   searchProperty,
@@ -44,12 +43,6 @@ PropertyRouter.delete(
 );
 
 PropertyRouter.get("/property-details/:slug", getPropertyBySlug);
-PropertyRouter.get(
-  "/user/property",
-  verifyToken,
-  paginationMiddleware,
-  getPropertyByUser
-);
 
 PropertyRouter.post(
   "/property/track-view",
