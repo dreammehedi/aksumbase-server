@@ -8,6 +8,7 @@ import {
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
   getPropertyByUser,
+  getUserRecentActivity,
   getUserReviews,
   getUserRolePackagePurchase,
   getUserSession,
@@ -124,5 +125,11 @@ DashboardRouter.get(
   verifyToken,
   paginationMiddleware,
   userRequestTour
+);
+
+DashboardRouter.get(
+  "/user/recent-activity",
+  verifyToken,
+  getUserRecentActivity
 );
 export default DashboardRouter;

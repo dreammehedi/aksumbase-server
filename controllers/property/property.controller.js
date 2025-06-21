@@ -423,6 +423,18 @@ export const deleteProperty = async (req, res) => {
 export const getPropertyBySlug = async (req, res) => {
   const { slug } = req.params;
 
+  let userId;
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      userId = decoded.userId;
+    } catch (err) {
+      console.warn("Invalid or expired token:", err.message);
+    }
+  }
+
   try {
     const property = await prisma.property.findUnique({
       where: { slug },
@@ -434,39 +446,49 @@ export const getPropertyBySlug = async (req, res) => {
         .json({ success: false, message: "Property not found" });
     }
 
-    // Update the visit count
     await prisma.property.update({
       where: { slug },
       data: {
-        views: {
-          increment: 1,
-        },
+        views: { increment: 1 },
       },
     });
 
-    // Get relevant properties (e.g., same category, city, and not the current one)
+    if (userId) {
+      try {
+        await prisma.propertyView.create({
+          data: {
+            userId,
+            propertyId: property.id,
+          },
+        });
+      } catch (err) {
+        if (
+          err.code !== "P2002" ||
+          !err.meta?.target?.includes("userId_propertyId")
+        ) {
+          console.error("Property view tracking failed:", err);
+        }
+      }
+    }
+
     const relevantProperties = await prisma.property.findMany({
       where: {
-        id: {
-          not: property.id,
-        },
+        id: { not: property.id },
         address: property?.address || "",
         city: property?.city || "",
         state: property?.state || "",
         type: property?.type || "",
         status: "approved",
       },
-      take: 20, // limit the number of relevant properties
-      orderBy: {
-        createdAt: "desc",
-      },
+      take: 20,
+      orderBy: { createdAt: "desc" },
     });
 
     res.status(200).json({
       success: true,
       data: {
         property,
-        relevantProperties: relevantProperties || [],
+        relevantProperties,
       },
     });
   } catch (error) {

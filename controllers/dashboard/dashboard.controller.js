@@ -913,3 +913,65 @@ export const userRequestPropertyContactUser = async (req, res) => {
     });
   }
 };
+
+export const getUserRecentActivity = async (req, res) => {
+  const userId = req.userId;
+
+  // Get date 7 days ago
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  try {
+    const [listings, views, bookmarks] = await Promise.all([
+      // 1. User's reviews in last 7 days
+
+      // 2. Properties listed by the user in last 7 days
+      prisma.property.findMany({
+        where: {
+          userId,
+          createdAt: { gte: sevenDaysAgo },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+
+      // 3. Property views in last 7 days
+      prisma.propertyView.findMany({
+        where: {
+          userId,
+          viewedAt: { gte: sevenDaysAgo },
+        },
+        orderBy: { viewedAt: "desc" },
+        include: {
+          property: true,
+        },
+      }),
+
+      // 4. Bookmarked properties in last 7 days
+      prisma.bookmark.findMany({
+        where: {
+          userId,
+          createdAt: { gte: sevenDaysAgo },
+        },
+        orderBy: { createdAt: "desc" },
+        include: {
+          property: true,
+        },
+      }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        listings,
+        views,
+        bookmarks,
+      },
+    });
+  } catch (error) {
+    console.error("Get User Recent Activity Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user recent activity.",
+    });
+  }
+};
