@@ -1,4 +1,4 @@
-import prisma from "../lib/prisma";
+import prisma from "../lib/prisma.js";
 
 // utils/createUserRoleAndTransaction.js
 export const createUserRoleAndTransaction = async (session) => {
