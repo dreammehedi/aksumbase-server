@@ -1,3 +1,4 @@
+import stripeConfig from "../config/stripe.config.js";
 import prisma from "../lib/prisma.js";
 
 // utils/createUserRoleAndTransaction.js
