@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import speakeasy from "speakeasy";
 import decrypt from "../../helper/decrypt.js";
+import cloudinary from "../../utils/cloudinary.js";
 const prisma = new PrismaClient();
 
 export const registerUser = async (req, res) => {
