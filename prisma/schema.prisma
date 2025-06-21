@@ -47,6 +47,10 @@ model User {
   avatarPublicId      String?
   phone               String?
   bio                 String?
+  address             String?
+  city                String?
+  state               String?
+  zipCode             String?
   previousRole        String?
   role                String    @default("user")
   isAdmin             Boolean   @default(false)
@@ -55,6 +59,7 @@ model User {
   resetCodeExpiration DateTime? @default(now())
   flagged             Boolean?  @default(false)
   flagReason          String?
+  isNotificationEnabled  Boolean   @default(true)
   isTwoFactorEnabled  Boolean   @default(false)
   twoFactorTempToken  String?
   twoFactorTempExp    DateTime?
