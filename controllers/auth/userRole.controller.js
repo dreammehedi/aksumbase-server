@@ -393,57 +393,61 @@ export const getUserRolePackagePurchase = async (req, res) => {
   }
 
   try {
-    const userRole = await prisma.userRole.findFirst({
-      where: { userId: userId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            phone: true,
-            bio: true,
-            role: true,
+    // Fetch in parallel
+    const [allPackages, userRole] = await Promise.all([
+      prisma.rolePackage.findMany({
+        orderBy: { price: "asc" }, // Optional: sort packages by price or name
+      }),
+      prisma.userRole.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              phone: true,
+              bio: true,
+              role: true,
+            },
+          },
+          rolePackage: {
+            select: {
+              id: true,
+              name: true,
+              durationDays: true,
+              price: true,
+              roleName: true,
+            },
+          },
+          transaction: {
+            select: {
+              id: true,
+              amount: true,
+              currency: true,
+              method: true,
+              invoiceUrl: true,
+              stripeId: true,
+              createdAt: true,
+              status: true,
+            },
           },
         },
-        rolePackage: {
-          select: {
-            id: true,
-            name: true,
-            durationDays: true,
-            price: true,
-            roleName: true,
-          },
-        },
-        transaction: {
-          select: {
-            id: true,
-            amount: true,
-            currency: true,
-            method: true,
-            invoiceUrl: true,
-            stripeId: true,
-            createdAt: true,
-            status: true,
-          },
-        },
-      },
-    });
-
-    if (!userRole) {
-      return res
-        .status(404)
-        .json({ error: "No role package found for this user." });
-    }
+      }),
+    ]);
 
     res.status(200).json({
-      message: "User role package fetched successfully.",
+      message: "Fetched role packages and user purchase successfully.",
       success: true,
-      data: userRole,
+      allPackages,
+      userPurchase: userRole || null,
     });
   } catch (error) {
-    console.error("Error fetching user role package:", error.message);
-    res.status(500).json({ error: "Failed to fetch user role package." });
+    console.error(
+      "Error fetching role packages or user purchase:",
+      error.message
+    );
+    res.status(500).json({ error: "Failed to fetch data." });
   }
 };
