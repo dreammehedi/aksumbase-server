@@ -1,3 +1,5 @@
+import prisma from "../lib/prisma";
+
 // utils/createUserRoleAndTransaction.js
 export const createUserRoleAndTransaction = async (session) => {
   const { userId, rolePackageId } = session.metadata;
