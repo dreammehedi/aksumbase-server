@@ -1,6 +1,7 @@
 import dayjs from "dayjs"; // For date manipulation
 import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
+import { createUserRoleAndTransaction } from "../../utils/createUserRoleAndTransaction.js";
 
 export const createRolePurchaseIntent = async (req, res) => {
   try {
@@ -97,58 +98,70 @@ export const handleStripeWebhook = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // if (event.type === "checkout.session.completed") {
+  //   const session = event.data.object;
+
+  //   const { userId, rolePackageId } = session.metadata;
+  //   const amount = session.amount_total / 100;
+  //   const currency = session.currency;
+  //   const paymentStatus = session.payment_status;
+  //   const stripeId = session.id;
+  //   const paymentMethod = session.payment_method_types?.[0] || "card";
+
+  //   let invoiceUrl = null;
+
+  //   try {
+  //     // ✅ Fetch hosted invoice URL if invoice ID is present
+  //     if (session.invoice) {
+  //       const stripe = await stripeConfig();
+  //       const invoice = await stripe.invoices.retrieve(session.invoice);
+  //       invoiceUrl = invoice.hosted_invoice_url;
+  //     }
+
+  //     // ✅ Create UserRole entry
+  //     const userRole = await prisma.userRole.create({
+  //       data: {
+  //         userId,
+  //         rolePackageId,
+  //         message: null,
+  //         isActive: false,
+  //         isPaused: false,
+  //         isExpired: false,
+  //         isVerified: false,
+  //       },
+  //     });
+
+  //     // ✅ Create Transaction record
+  //     await prisma.transaction.create({
+  //       data: {
+  //         userId,
+  //         userRoleId: userRole.id,
+  //         amount,
+  //         currency,
+  //         status: paymentStatus,
+  //         method: paymentMethod,
+  //         stripeId,
+  //         invoiceUrl,
+  //       },
+  //     });
+
+  //     console.log("✅ Webhook handled: session completed");
+  //     return res.status(200).send("Webhook handled successfully");
+  //   } catch (err) {
+  //     console.error("❌ Error during webhook handling:", err);
+  //     return res.status(500).send("Internal server error");
+  //   }
+  // }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-
-    const { userId, rolePackageId } = session.metadata;
-    const amount = session.amount_total / 100;
-    const currency = session.currency;
-    const paymentStatus = session.payment_status;
-    const stripeId = session.id;
-    const paymentMethod = session.payment_method_types?.[0] || "card";
-
-    let invoiceUrl = null;
-
     try {
-      // ✅ Fetch hosted invoice URL if invoice ID is present
-      if (session.invoice) {
-        const stripe = await stripeConfig();
-        const invoice = await stripe.invoices.retrieve(session.invoice);
-        invoiceUrl = invoice.hosted_invoice_url;
-      }
-
-      // ✅ Create UserRole entry
-      const userRole = await prisma.userRole.create({
-        data: {
-          userId,
-          rolePackageId,
-          message: null,
-          isActive: false,
-          isPaused: false,
-          isExpired: false,
-          isVerified: false,
-        },
-      });
-
-      // ✅ Create Transaction record
-      await prisma.transaction.create({
-        data: {
-          userId,
-          userRoleId: userRole.id,
-          amount,
-          currency,
-          status: paymentStatus,
-          method: paymentMethod,
-          stripeId,
-          invoiceUrl,
-        },
-      });
-
-      console.log("✅ Webhook handled: session completed");
-      return res.status(200).send("Webhook handled successfully");
+      const result = await createUserRoleAndTransaction(session);
+      console.log("Webhook logic:", result);
+      return res.status(200).send("Handled");
     } catch (err) {
-      console.error("❌ Error during webhook handling:", err);
-      return res.status(500).send("Internal server error");
+      console.error("Webhook error:", err);
+      return res.status(500).send("Internal error");
     }
   }
 
@@ -349,5 +362,25 @@ export const getAllUserRoleApplications = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+export const handleRolePackageFrontendSuccess = async (req, res) => {
+  const { sessionId } = req.query;
+
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID is required" });
+  }
+
+  try {
+    const stripe = await stripeConfig();
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const result = await createUserRoleAndTransaction(session);
+
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.error("Frontend payment-success error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
