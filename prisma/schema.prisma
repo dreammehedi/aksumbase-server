@@ -118,21 +118,7 @@ model UserRole {
   transactions Transaction[]
 }
 
-// model Transaction {
-//   id         String   @id @default(auto()) @map("_id") @db.ObjectId
-//   userId     String   @db.ObjectId
-//   userRoleId String   @unique @db.ObjectId
-//   amount     Float
-//   currency   String
-//   status     String // e.g., "succeeded", "failed"
-//   method     String? // e.g., "card"
-//   stripeId   String // Stripe session ID or payment intent ID
-//   invoiceUrl String?
-//   createdAt  DateTime @default(now())
 
-//   user     User     @relation(fields: [userId], references: [id])
-//   userRole UserRole @relation(fields: [userRoleId], references: [id])
-// }
 
 model Transaction {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId

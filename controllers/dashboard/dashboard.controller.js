@@ -604,7 +604,7 @@ export const getUserRolePackagePurchase = async (req, res) => {
               roleName: true,
             },
           },
-          transaction: {
+          transactions: {
             select: {
               id: true,
               amount: true,
@@ -1151,7 +1151,6 @@ export const getUsersByRole = async (req, res) => {
     const users = await prisma.user.findMany({
       where: {
         role,
-        NOT: [{ role: "user" }, { role: "admin" }],
         OR: [
           { email: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
@@ -1160,7 +1159,18 @@ export const getUsersByRole = async (req, res) => {
           { zipCode: { contains: search, mode: "insensitive" } },
         ],
       },
-      include: {
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        phone: true,
+        role: true,
+        bio: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        avatar: true,
         userRoles: {
           where: { isActive: true },
           orderBy: { startDate: "asc" },
@@ -1198,7 +1208,7 @@ export const getUsersByRole = async (req, res) => {
       .map((user) => {
         const reviews = user.reviewsReceived || [];
 
-        // Optional: calculate average rating
+        // Calculate average rating if reviews exist
         const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
         const averageRating = reviews.length
           ? (totalRating / reviews.length).toFixed(1)
@@ -1215,6 +1225,7 @@ export const getUsersByRole = async (req, res) => {
           city: user.city,
           state: user.state,
           zipCode: user.zipCode,
+          avatar: user.avatar,
           userRole: user.userRoles[0] || null,
           averageRating,
           totalReviews: reviews.length,
