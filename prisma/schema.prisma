@@ -39,30 +39,30 @@ model RolePackage {
 }
 
 model User {
-  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
-  username            String
-  email               String    @unique
-  password            String
-  avatar              String?
-  avatarPublicId      String?
-  phone               String?
-  bio                 String?
-  address             String?
-  city                String?
-  state               String?
-  zipCode             String?
-  previousRole        String?
-  role                String    @default("user")
-  isAdmin             Boolean   @default(false)
-  status              Status    @default(pending)
-  resetCode           String?
-  resetCodeExpiration DateTime? @default(now())
-  flagged             Boolean?  @default(false)
-  flagReason          String?
-  isNotificationEnabled  Boolean   @default(true)
-  isTwoFactorEnabled  Boolean   @default(false)
-  twoFactorTempToken  String?
-  twoFactorTempExp    DateTime?
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  username              String
+  email                 String    @unique
+  password              String
+  avatar                String?
+  avatarPublicId        String?
+  phone                 String?
+  bio                   String?
+  address               String?
+  city                  String?
+  state                 String?
+  zipCode               String?
+  previousRole          String?
+  role                  String    @default("user")
+  isAdmin               Boolean   @default(false)
+  status                Status    @default(pending)
+  resetCode             String?
+  resetCodeExpiration   DateTime? @default(now())
+  flagged               Boolean?  @default(false)
+  flagReason            String?
+  isNotificationEnabled Boolean   @default(true)
+  isTwoFactorEnabled    Boolean   @default(false)
+  twoFactorTempToken    String?
+  twoFactorTempExp      DateTime?
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -74,12 +74,14 @@ model User {
   userRoles                  UserRole[]
   sessions                   Session[]
   property                   Property[]
-  reviews                    Review[]
   Bookmark                   Bookmark[]
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]
   PropertyContactUserRequest PropertyContactUserRequest[]
-  transactions               Transaction[] // 1:M User → Transaction
+  transactions               Transaction[]
+
+  reviewsGiven    Review[] @relation("UserReviewsGiven")
+  reviewsReceived Review[] @relation("UserReviewsReceived")
 }
 
 enum Status {
@@ -135,7 +137,7 @@ model Transaction {
 model Session {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   userId     String    @db.ObjectId
-  token      String    
+  token      String
   deviceInfo String // user-agent + IP, etc.
   isActive   Boolean   @default(true)
   lastUsedAt DateTime?
@@ -149,18 +151,21 @@ model Session {
 }
 
 model Review {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  propertyId String   @db.ObjectId
-  userId     String   @db.ObjectId
-  rating     Int // from 1 to 5
-  images     Json?
-  comment    String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  reviewerId   String   @db.ObjectId
+  targetUserId String   @db.ObjectId
+  rating       Int
+  comment      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  // Relations
-  property Property @relation(fields: [propertyId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  // ✅ Add named relations to User
+  reviewer   User @relation("UserReviewsGiven", fields: [reviewerId], references: [id])
+  targetUser User @relation("UserReviewsReceived", fields: [targetUserId], references: [id])
+
+  @@unique([reviewerId, targetUserId])
+  @@index([reviewerId])
+  @@index([targetUserId])
 }
 
 // hero banner
@@ -291,13 +296,13 @@ model EmailConfiguration {
 
 // stripe configuration
 model StripeConfiguration {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  stripeKey    String
-  stripeSecret String
-  stripeMethod String
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  stripeKey           String
+  stripeSecret        String
+  stripeMethod        String
   stripeWebhookSecret String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 // Seller Resources
@@ -390,7 +395,6 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  Review                     Review[]
   Bookmark                   Bookmark[]
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]

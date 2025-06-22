@@ -975,6 +975,90 @@ export const getUserRecentActivity = async (req, res) => {
     });
   }
 };
+// export const getUsersByRole = async (req, res) => {
+//   const { role, search = "" } = req.query;
+
+//   // Block invalid or unauthorized roles
+//   if (!role || ["user", "admin"].includes(role)) {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Invalid or unauthorized role.",
+//     });
+//   }
+
+//   try {
+//     const users = await prisma.user.findMany({
+//       where: {
+//         role,
+//         NOT: [{ role: "user" }, { role: "admin" }],
+//         OR: [
+//           { email: { contains: search, mode: "insensitive" } },
+//           { address: { contains: search, mode: "insensitive" } },
+//           { city: { contains: search, mode: "insensitive" } },
+//           { state: { contains: search, mode: "insensitive" } },
+//           { zipCode: { contains: search, mode: "insensitive" } },
+//         ],
+//       },
+//       include: {
+//         userRoles: {
+//           where: { isActive: true },
+//           orderBy: { startDate: "asc" },
+//           take: 1,
+//           select: {
+//             id: true,
+//             startDate: true,
+//             endDate: true,
+//             isActive: true,
+//             isExpired: true,
+//             isPaused: true,
+//           },
+//         },
+//       },
+//     });
+
+//     // Format and sort users by: isActive -> startDate ASC
+//     const filtered = users
+//       .map((user) => ({
+//         id: user.id,
+//         username: user.username,
+//         email: user.email,
+//         phone: user.phone,
+//         role: user.role,
+//         bio: user.bio,
+//         address: user.address,
+//         city: user.city,
+//         state: user.state,
+//         zipCode: user.zipCode,
+//         userRole: user.userRoles[0] || null,
+//       }))
+//       .sort((a, b) => {
+//         const aActive = a.userRole?.isActive;
+//         const bActive = b.userRole?.isActive;
+
+//         if (aActive && !bActive) return -1;
+//         if (!aActive && bActive) return 1;
+
+//         const dateA = new Date(a.userRole?.startDate || 0);
+//         const dateB = new Date(b.userRole?.startDate || 0);
+//         return dateA - dateB;
+//       });
+
+//     res.status(200).json({
+//       success: true,
+//       role,
+//       total: filtered.length,
+//       data: filtered,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching users by role:", error.message);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to get users by role.",
+//     });
+//   }
+// };
+
+// get by role data with review
 export const getUsersByRole = async (req, res) => {
   const { role, search = "" } = req.query;
 
@@ -1013,24 +1097,53 @@ export const getUsersByRole = async (req, res) => {
             isPaused: true,
           },
         },
+        reviewsReceived: {
+          include: {
+            reviewer: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+                email: true,
+                phone: true,
+                address: true,
+                city: true,
+                state: true,
+                zipCode: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    // Format and sort users by: isActive -> startDate ASC
     const filtered = users
-      .map((user) => ({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        bio: user.bio,
-        address: user.address,
-        city: user.city,
-        state: user.state,
-        zipCode: user.zipCode,
-        userRole: user.userRoles[0] || null,
-      }))
+      .map((user) => {
+        const reviews = user.reviewsReceived || [];
+
+        // Optional: calculate average rating
+        const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+        const averageRating = reviews.length
+          ? (totalRating / reviews.length).toFixed(1)
+          : null;
+
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          bio: user.bio,
+          address: user.address,
+          city: user.city,
+          state: user.state,
+          zipCode: user.zipCode,
+          userRole: user.userRoles[0] || null,
+          averageRating,
+          totalReviews: reviews.length,
+          reviews, // full review list with reviewer info
+        };
+      })
       .sort((a, b) => {
         const aActive = a.userRole?.isActive;
         const bActive = b.userRole?.isActive;

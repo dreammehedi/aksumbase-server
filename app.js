@@ -33,6 +33,7 @@ import { default as PropertyRouter } from "./routes/property/property.route.js";
 import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js";
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
 import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
+import UserReviewRouter from "./routes/property/userReview.route.js";
 
 // Configure environment variables
 dotenv.config();
@@ -175,6 +176,7 @@ app.use("/api", PropertyBookmarkRouter);
 app.use("/api", PropertyTourRequestRouter);
 app.use("/api", PropertyContactUserRequestRouter);
 app.use("/api", StripeConfigurationRouter);
+app.use("/api", UserReviewRouter);
 
 // Start cron job
 roleExpiryChecker();
