@@ -1,7 +1,10 @@
 import dayjs from "dayjs"; // For date manipulation
 import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
-import { createUserRoleAndTransaction } from "../../utils/createUserRoleAndTransaction.js";
+import {
+  createRenewUserRoleAndTransaction,
+  createUserRoleAndTransaction,
+} from "../../utils/createUserRoleAndTransaction.js";
 
 export const createRolePurchaseIntent = async (req, res) => {
   try {
@@ -74,6 +77,7 @@ export const createRolePurchaseIntent = async (req, res) => {
   }
 };
 
+// role package purchase stripe webhook
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event = req.body;
@@ -101,7 +105,7 @@ export const handleStripeWebhook = async (req, res) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     try {
-      const result = await createUserRoleAndTransaction(session);
+      await createUserRoleAndTransaction(session);
 
       return res.status(200).send("Handled");
     } catch (err) {
@@ -250,6 +254,64 @@ export const handleRolePackageFrontendSuccess = async (req, res) => {
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const result = await createUserRoleAndTransaction(session);
+
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.error("Frontend payment-success error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// role package renew purchase stripe webhook
+export const handleRenewStripeWebhook = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event = req.body;
+  console.log(event, "event renew role purchase webhook");
+  try {
+    const stripe = await stripeConfig(); // returns Stripe instance
+    const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
+
+    if (!config || !config.stripeWebhookSecret) {
+      throw new Error("Stripe webhook secret not found in DB");
+    }
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      config.stripeWebhookSecret || process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error("❌ Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle checkout.session.completed event
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    try {
+      await createRenewUserRoleAndTransaction(session);
+
+      return res.status(200).send("Handled");
+    } catch (err) {
+      return res.status(500).send("Internal error");
+    }
+  } else {
+    res.json({ received: true }); // acknowledge other events
+  }
+};
+
+// role package renew purchase success for frontned
+export const handleRenewRolePackageFrontendSuccess = async (req, res) => {
+  const { sessionId } = req.query;
+
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID is required" });
+  }
+
+  try {
+    const stripe = await stripeConfig();
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const result = await createRenewUserRoleAndTransaction(session);
 
     return res.status(200).json({ success: true, result });
   } catch (err) {

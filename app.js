@@ -9,7 +9,10 @@ import { fileURLToPath } from "url";
 // Import routes
 import Stripe from "stripe";
 import passport from "./config/passport.config.js";
-import { handleStripeWebhook } from "./controllers/auth/userRole.controller.js";
+import {
+  handleRenewStripeWebhook,
+  handleStripeWebhook,
+} from "./controllers/auth/userRole.controller.js";
 import reminderEmailJob from "./helper/reminderEmailJob.js";
 import roleExpiryChecker from "./helper/roleExpiryChecker.js";
 import prisma from "./lib/prisma.js";
@@ -71,6 +74,13 @@ app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
   handleStripeWebhook
+);
+
+// ✅ Stripe webhook: must use raw BEFORE JSON parser
+app.post(
+  "/api/role-renew/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  handleRenewStripeWebhook
 );
 // Set view engine
 app.set("view engine", "ejs");

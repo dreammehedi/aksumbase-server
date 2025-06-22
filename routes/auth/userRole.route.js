@@ -4,6 +4,7 @@ import {
   activateRole,
   createRolePurchaseIntent,
   getAllUserRoleApplications,
+  handleRenewRolePackageFrontendSuccess,
   handleRolePackageFrontendSuccess,
 } from "../../controllers/auth/userRole.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -36,4 +37,9 @@ UserRoleRouter.get(
   handleRolePackageFrontendSuccess
 );
 
+UserRoleRouter.get(
+  "/renew-role-package-payment-success",
+  verifyToken,
+  handleRenewRolePackageFrontendSuccess
+);
 export default UserRoleRouter;

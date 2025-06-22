@@ -113,25 +113,41 @@ model UserRole {
   createdAt     DateTime  @default(now())
 
   // Relations
-  user        User         @relation(fields: [userId], references: [id])
-  rolePackage RolePackage  @relation(fields: [rolePackageId], references: [id])
-  transaction Transaction? @relation() // 👈 1:1 (no fields/references here)
+  user         User          @relation(fields: [userId], references: [id])
+  rolePackage  RolePackage   @relation(fields: [rolePackageId], references: [id])
+  transactions Transaction[]
 }
+
+// model Transaction {
+//   id         String   @id @default(auto()) @map("_id") @db.ObjectId
+//   userId     String   @db.ObjectId
+//   userRoleId String   @unique @db.ObjectId
+//   amount     Float
+//   currency   String
+//   status     String // e.g., "succeeded", "failed"
+//   method     String? // e.g., "card"
+//   stripeId   String // Stripe session ID or payment intent ID
+//   invoiceUrl String?
+//   createdAt  DateTime @default(now())
+
+//   user     User     @relation(fields: [userId], references: [id])
+//   userRole UserRole @relation(fields: [userRoleId], references: [id])
+// }
 
 model Transaction {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
-  userRoleId String   @unique @db.ObjectId
+  userRoleId String   @db.ObjectId // ✅ No @unique here
   amount     Float
   currency   String
-  status     String // e.g., "succeeded", "failed"
-  method     String? // e.g., "card"
-  stripeId   String // Stripe session ID or payment intent ID
+  status     String
+  method     String?
+  stripeId   String   @unique
   invoiceUrl String?
   createdAt  DateTime @default(now())
 
   user     User     @relation(fields: [userId], references: [id])
-  userRole UserRole @relation(fields: [userRoleId], references: [id])
+  userRole UserRole @relation(fields: [userRoleId], references: [id]) // ✅ One-to-many
 }
 
 model Session {

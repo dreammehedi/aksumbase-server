@@ -13,7 +13,7 @@ import {
   getUserRolePackagePurchase,
   getUsersByRole,
   getUserSession,
-  renewRole,
+  renewRolePurchaseIntent,
   updateMultiplePropertyStatus,
   userRequestPropertyContactUser,
   userRequestTour,
@@ -104,7 +104,12 @@ DashboardRouter.get(
   getPropertyByUser
 );
 
-DashboardRouter.post("/user/role-renew", verifyToken, upload.none(), renewRole);
+DashboardRouter.post(
+  "/user/role-renew-purchase-intent",
+  verifyToken,
+  upload.none(),
+  renewRolePurchaseIntent
+);
 
 DashboardRouter.get(
   "/user/property/contact-user",

@@ -1,3 +1,4 @@
+import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
 
 // admin controller
@@ -749,75 +750,151 @@ export const getPropertyByUser = async (req, res) => {
     });
   }
 };
+// renew role with static data
+// export const renewRole = async (req, res) => {
+//   const { userId, rolePackageId } = req.body;
 
-export const renewRole = async (req, res) => {
-  const { userId, rolePackageId } = req.body;
+//   if (!userId || !rolePackageId) {
+//     return res.status(400).json({
+//       error: "Both userId and rolePackageId are required.",
+//     });
+//   }
 
-  if (!userId || !rolePackageId) {
-    return res.status(400).json({
-      error: "Both userId and rolePackageId are required.",
-    });
-  }
+//   try {
+//     // 1. Get userRole by user and package
+//     const role = await prisma.userRole.findFirst({
+//       where: {
+//         userId,
+//         rolePackageId,
+//       },
+//       include: { rolePackage: true },
+//     });
 
+//     if (!role) {
+//       return res.status(404).json({
+//         error: "Role not found for this user and package.",
+//       });
+//     }
+
+//     // 2. Check if expired based on endDate
+//     const now = new Date();
+//     const isActuallyExpired = role.endDate && dayjs(role.endDate).isBefore(now);
+
+//     if (!isActuallyExpired && !role.isExpired) {
+//       return res.status(400).json({
+//         error: "Role is not expired yet. Cannot renew.",
+//       });
+//     }
+
+//     // 3. Optionally update isExpired in DB if it's outdated
+//     if (isActuallyExpired && !role.isExpired) {
+//       await prisma.userRole.update({
+//         where: { id: role.id },
+//         data: { isExpired: true },
+//       });
+//     }
+
+//     // 4. Calculate new start/end date
+//     const newStartDate = new Date();
+//     const newEndDate = dayjs(newStartDate)
+//       .add(role.rolePackage.durationDays, "day")
+//       .toDate();
+
+//     // 5. Renew the role
+//     const renewed = await prisma.userRole.update({
+//       where: { id: role.id },
+//       data: {
+//         startDate: newStartDate,
+//         endDate: newEndDate,
+//         isExpired: false,
+//         isActive: true,
+//         isPaused: false,
+//       },
+//     });
+
+//     res.status(200).json({
+//       message: "Role renewed successfully.",
+//       data: renewed,
+//     });
+//   } catch (error) {
+//     console.error("Renew Role Error:", error.message);
+//     res.status(500).json({ error: "Failed to renew role." });
+//   }
+// };
+
+// renew role with stripe payment method
+export const renewRolePurchaseIntent = async (req, res) => {
   try {
-    // 1. Get userRole by user and package
-    const role = await prisma.userRole.findFirst({
+    const stripe = await stripeConfig();
+    const userId = req.userId;
+    const { rolePackageId, currency = "usd", metadata = {} } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized user." });
+    }
+
+    if (!rolePackageId) {
+      return res.status(400).json({ error: "rolePackageId is required." });
+    }
+
+    // 🔎 Get current package details
+    const rolePackage = await prisma.rolePackage.findUnique({
+      where: { id: rolePackageId },
+    });
+
+    if (!rolePackage || !rolePackage.price) {
+      return res.status(404).json({ error: "Role package not found." });
+    }
+
+    // 🔎 Find expired userRole (same user + same package)
+    const expiredRole = await prisma.userRole.findFirst({
       where: {
         userId,
         rolePackageId,
+        isExpired: true,
       },
-      include: { rolePackage: true },
+      orderBy: { endDate: "desc" }, // Get the most recent expired one
     });
 
-    if (!role) {
-      return res.status(404).json({
-        error: "Role not found for this user and package.",
-      });
-    }
-
-    // 2. Check if expired based on endDate
-    const now = new Date();
-    const isActuallyExpired = role.endDate && dayjs(role.endDate).isBefore(now);
-
-    if (!isActuallyExpired && !role.isExpired) {
+    if (!expiredRole) {
       return res.status(400).json({
-        error: "Role is not expired yet. Cannot renew.",
+        error: "No expired role found for this package. Cannot renew.",
       });
     }
 
-    // 3. Optionally update isExpired in DB if it's outdated
-    if (isActuallyExpired && !role.isExpired) {
-      await prisma.userRole.update({
-        where: { id: role.id },
-        data: { isExpired: true },
-      });
-    }
-
-    // 4. Calculate new start/end date
-    const newStartDate = new Date();
-    const newEndDate = dayjs(newStartDate)
-      .add(role.rolePackage.durationDays, "day")
-      .toDate();
-
-    // 5. Renew the role
-    const renewed = await prisma.userRole.update({
-      where: { id: role.id },
-      data: {
-        startDate: newStartDate,
-        endDate: newEndDate,
-        isExpired: false,
-        isActive: true,
-        isPaused: false,
+    // ✅ Create Stripe Checkout session with current package price
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      customer_email: req.userEmail, // optional
+      line_items: [
+        {
+          price_data: {
+            currency,
+            product_data: {
+              name: rolePackage.name,
+              description: rolePackage.roleName,
+            },
+            unit_amount: Math.round(rolePackage.price * 100), // Convert to cents
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        userId,
+        rolePackageId,
+        renewUserRoleId: expiredRole.id, // Pass expired role ID to update later
+        ...metadata,
       },
+      invoice_creation: { enabled: true },
+      success_url: `${process.env.FRONTEND_LINK}/renew-role-payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_LINK}/renew-role-payment-cancelled`,
     });
 
-    res.status(200).json({
-      message: "Role renewed successfully.",
-      data: renewed,
-    });
+    res.status(200).json({ success: true, url: session.url });
   } catch (error) {
-    console.error("Renew Role Error:", error.message);
-    res.status(500).json({ error: "Failed to renew role." });
+    console.error("Renew role purchase error:", error);
+    res.status(500).json({ error: "Failed to create renew session." });
   }
 };
 
