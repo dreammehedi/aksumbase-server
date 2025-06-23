@@ -8,6 +8,7 @@ import {
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
   getPropertyByUser,
+  getSingleUserProfile,
   getUserRecentActivity,
   getUserReviews,
   getUserRolePackagePurchase,
@@ -139,5 +140,6 @@ DashboardRouter.get(
   getUserRecentActivity
 );
 
-DashboardRouter.get("/user/by-role", getUsersByRole);
+DashboardRouter.get("/user/by-role", paginationMiddleware, getUsersByRole);
+DashboardRouter.get("/user/user-profile/:id", getSingleUserProfile);
 export default DashboardRouter;

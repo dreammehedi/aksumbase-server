@@ -447,7 +447,7 @@ export const getPropertyBySlug = async (req, res) => {
     }
 
     await prisma.property.update({
-      where: { slug },
+      where: { slug, status: "approved" },
       data: {
         views: { increment: 1 },
       },

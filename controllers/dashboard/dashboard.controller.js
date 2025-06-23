@@ -1052,92 +1052,10 @@ export const getUserRecentActivity = async (req, res) => {
     });
   }
 };
-// export const getUsersByRole = async (req, res) => {
-//   const { role, search = "" } = req.query;
 
-//   // Block invalid or unauthorized roles
-//   if (!role || ["user", "admin"].includes(role)) {
-//     return res.status(403).json({
-//       success: false,
-//       message: "Invalid or unauthorized role.",
-//     });
-//   }
-
-//   try {
-//     const users = await prisma.user.findMany({
-//       where: {
-//         role,
-//         NOT: [{ role: "user" }, { role: "admin" }],
-//         OR: [
-//           { email: { contains: search, mode: "insensitive" } },
-//           { address: { contains: search, mode: "insensitive" } },
-//           { city: { contains: search, mode: "insensitive" } },
-//           { state: { contains: search, mode: "insensitive" } },
-//           { zipCode: { contains: search, mode: "insensitive" } },
-//         ],
-//       },
-//       include: {
-//         userRoles: {
-//           where: { isActive: true },
-//           orderBy: { startDate: "asc" },
-//           take: 1,
-//           select: {
-//             id: true,
-//             startDate: true,
-//             endDate: true,
-//             isActive: true,
-//             isExpired: true,
-//             isPaused: true,
-//           },
-//         },
-//       },
-//     });
-
-//     // Format and sort users by: isActive -> startDate ASC
-//     const filtered = users
-//       .map((user) => ({
-//         id: user.id,
-//         username: user.username,
-//         email: user.email,
-//         phone: user.phone,
-//         role: user.role,
-//         bio: user.bio,
-//         address: user.address,
-//         city: user.city,
-//         state: user.state,
-//         zipCode: user.zipCode,
-//         userRole: user.userRoles[0] || null,
-//       }))
-//       .sort((a, b) => {
-//         const aActive = a.userRole?.isActive;
-//         const bActive = b.userRole?.isActive;
-
-//         if (aActive && !bActive) return -1;
-//         if (!aActive && bActive) return 1;
-
-//         const dateA = new Date(a.userRole?.startDate || 0);
-//         const dateB = new Date(b.userRole?.startDate || 0);
-//         return dateA - dateB;
-//       });
-
-//     res.status(200).json({
-//       success: true,
-//       role,
-//       total: filtered.length,
-//       data: filtered,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching users by role:", error.message);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to get users by role.",
-//     });
-//   }
-// };
-
-// get by role data with review
 export const getUsersByRole = async (req, res) => {
   const { role, search = "" } = req.query;
+  const { skip = 0, limit = 20 } = req.pagination || {};
 
   // Block invalid or unauthorized roles
   if (!role || ["user", "admin"].includes(role)) {
@@ -1147,10 +1065,17 @@ export const getUsersByRole = async (req, res) => {
     });
   }
 
+  let rolesToQuery = [role];
+
+  // Map 'other_professionals' to multiple roles
+  if (role === "other_professionals") {
+    rolesToQuery = ["homeowner_landlord", "property_manager"];
+  }
+
   try {
     const users = await prisma.user.findMany({
       where: {
-        role,
+        role: { in: rolesToQuery },
         OR: [
           { email: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
@@ -1202,13 +1127,13 @@ export const getUsersByRole = async (req, res) => {
           },
         },
       },
+      skip: Number(skip),
+      take: Number(limit),
     });
 
     const filtered = users
       .map((user) => {
         const reviews = user.reviewsReceived || [];
-
-        // Calculate average rating if reviews exist
         const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
         const averageRating = reviews.length
           ? (totalRating / reviews.length).toFixed(1)
@@ -1229,7 +1154,7 @@ export const getUsersByRole = async (req, res) => {
           userRole: user.userRoles[0] || null,
           averageRating,
           totalReviews: reviews.length,
-          reviews, // full review list with reviewer info
+          reviews,
         };
       })
       .sort((a, b) => {
@@ -1247,14 +1172,163 @@ export const getUsersByRole = async (req, res) => {
     res.status(200).json({
       success: true,
       role,
-      total: filtered.length,
       data: filtered,
+      pagination: {
+        total: filtered.length,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
     });
   } catch (error) {
     console.error("Error fetching users by role:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to get users by role.",
+    });
+  }
+};
+export const getSingleUserProfile = async (req, res) => {
+  const { id } = req.params;
+
+  const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
+
+  if (!id || !isValidObjectId(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid or missing user ID.",
+    });
+  }
+
+  const allowedRoles = [
+    "agent_broker",
+    "homeowner_landlord",
+    "property_manager",
+  ];
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        phone: true,
+        role: true,
+        bio: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        avatar: true,
+        userRoles: {
+          where: { isActive: true },
+          orderBy: { startDate: "asc" },
+          take: 1,
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            isActive: true,
+            isExpired: true,
+            isPaused: true,
+          },
+        },
+        reviewsReceived: {
+          include: {
+            reviewer: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+                email: true,
+                phone: true,
+                address: true,
+                city: true,
+                state: true,
+                zipCode: true,
+              },
+            },
+          },
+        },
+        // Fetch only active properties
+        property: {
+          where: { status: "approved" },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            price: true,
+            address: true,
+            city: true,
+            state: true,
+            zip: true,
+            latitude: true,
+            longitude: true,
+            neighborhood: true,
+            views: true,
+            type: true,
+            property: true,
+            bedrooms: true,
+            bathrooms: true,
+            size: true,
+            lotSize: true,
+            yearBuilt: true,
+            description: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    if (!allowedRoles.includes(user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Role not permitted.",
+      });
+    }
+
+    const reviews = user.reviewsReceived || [];
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = reviews.length
+      ? (totalRating / reviews.length).toFixed(1)
+      : null;
+
+    const userProfile = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      bio: user.bio,
+      address: user.address,
+      city: user.city,
+      state: user.state,
+      zipCode: user.zipCode,
+      avatar: user.avatar,
+      userRole: user.userRoles[0] || null,
+      averageRating,
+      totalReviews: reviews.length,
+      reviews,
+      listingProperties: user.property || [],
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: userProfile,
+    });
+  } catch (error) {
+    console.error("Error fetching single user profile:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user profile.",
     });
   }
 };
