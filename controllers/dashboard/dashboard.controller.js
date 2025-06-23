@@ -7,7 +7,7 @@ export const getAdminDashboardOverview = async (req, res, next) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Recent users within last 7 days
+    // Recent users within last 7 days excluding admin
     const recentUsers = await prisma.user.findMany({
       where: {
         createdAt: {
@@ -29,6 +29,7 @@ export const getAdminDashboardOverview = async (req, res, next) => {
     // Count total properties
     const totalProperties = await prisma.property.count();
 
+    // Recent properties created within last 7 days
     const recentListingProperties = await prisma.property.findMany({
       where: {
         createdAt: {
@@ -40,13 +41,29 @@ export const getAdminDashboardOverview = async (req, res, next) => {
       },
     });
 
+    // Fetch all paid transactions
+    const paidTransactions = await prisma.transaction.findMany({
+      where: {
+        status: "paid",
+      },
+      select: {
+        amount: true,
+      },
+    });
+
+    // Calculate total revenue by summing amounts
+    const totalRevenue = paidTransactions.reduce(
+      (sum, tx) => sum + tx.amount,
+      0
+    );
+
     res.status(200).json({
       success: true,
       data: {
         recentUsers,
         totalUsers,
         totalProperties,
-        totalRevenue: 3000,
+        totalRevenue,
         recentListing: recentListingProperties,
       },
     });
@@ -750,77 +767,6 @@ export const getPropertyByUser = async (req, res) => {
     });
   }
 };
-// renew role with static data
-// export const renewRole = async (req, res) => {
-//   const { userId, rolePackageId } = req.body;
-
-//   if (!userId || !rolePackageId) {
-//     return res.status(400).json({
-//       error: "Both userId and rolePackageId are required.",
-//     });
-//   }
-
-//   try {
-//     // 1. Get userRole by user and package
-//     const role = await prisma.userRole.findFirst({
-//       where: {
-//         userId,
-//         rolePackageId,
-//       },
-//       include: { rolePackage: true },
-//     });
-
-//     if (!role) {
-//       return res.status(404).json({
-//         error: "Role not found for this user and package.",
-//       });
-//     }
-
-//     // 2. Check if expired based on endDate
-//     const now = new Date();
-//     const isActuallyExpired = role.endDate && dayjs(role.endDate).isBefore(now);
-
-//     if (!isActuallyExpired && !role.isExpired) {
-//       return res.status(400).json({
-//         error: "Role is not expired yet. Cannot renew.",
-//       });
-//     }
-
-//     // 3. Optionally update isExpired in DB if it's outdated
-//     if (isActuallyExpired && !role.isExpired) {
-//       await prisma.userRole.update({
-//         where: { id: role.id },
-//         data: { isExpired: true },
-//       });
-//     }
-
-//     // 4. Calculate new start/end date
-//     const newStartDate = new Date();
-//     const newEndDate = dayjs(newStartDate)
-//       .add(role.rolePackage.durationDays, "day")
-//       .toDate();
-
-//     // 5. Renew the role
-//     const renewed = await prisma.userRole.update({
-//       where: { id: role.id },
-//       data: {
-//         startDate: newStartDate,
-//         endDate: newEndDate,
-//         isExpired: false,
-//         isActive: true,
-//         isPaused: false,
-//       },
-//     });
-
-//     res.status(200).json({
-//       message: "Role renewed successfully.",
-//       data: renewed,
-//     });
-//   } catch (error) {
-//     console.error("Renew Role Error:", error.message);
-//     res.status(500).json({ error: "Failed to renew role." });
-//   }
-// };
 
 // renew role with stripe payment method
 export const renewRolePurchaseIntent = async (req, res) => {
