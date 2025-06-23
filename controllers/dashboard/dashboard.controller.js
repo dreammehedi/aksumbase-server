@@ -265,9 +265,58 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
   }
 };
 
+// export const getUserSession = async (req, res) => {
+//   try {
+//     const userId = req.userId;
+
+//     if (!userId) {
+//       return res
+//         .status(401)
+//         .json({ success: false, message: "Unauthorized access" });
+//     }
+
+//     const session = await prisma.session.findMany({
+//       where: {
+//         userId,
+//       },
+//       orderBy: { createdAt: "desc" }, // get latest session
+//       include: {
+//         user: {
+//           select: {
+//             id: true,
+//             username: true,
+//             email: true,
+//             role: true,
+//             status: true,
+//             createdAt: true,
+//           },
+//         },
+//       },
+//     });
+
+//     if (!session) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Session not found" });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       data: session,
+//     });
+//   } catch (error) {
+//     console.error("Get user session error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch user session",
+//     });
+//   }
+// };
+
 export const getUserSession = async (req, res) => {
   try {
     const userId = req.userId;
+    const { skip = 0, limit = 10 } = req.pagination || {};
 
     if (!userId) {
       return res
@@ -275,11 +324,14 @@ export const getUserSession = async (req, res) => {
         .json({ success: false, message: "Unauthorized access" });
     }
 
+    // 1. Fetch filtered & paginated sessions
     const session = await prisma.session.findMany({
       where: {
         userId,
       },
-      orderBy: { createdAt: "desc" }, // get latest session
+      skip: Number(skip),
+      take: Number(limit),
+      orderBy: { createdAt: "desc" },
       include: {
         user: {
           select: {
@@ -294,15 +346,29 @@ export const getUserSession = async (req, res) => {
       },
     });
 
-    if (!session) {
+    // 2. Count total sessions
+    const total = await prisma.session.count({
+      where: {
+        userId,
+      },
+    });
+
+    // 3. Check if sessions exist
+    if (!session || session.length === 0) {
       return res
         .status(404)
-        .json({ success: false, message: "Session not found" });
+        .json({ success: false, message: "No sessions found" });
     }
 
+    // 4. Respond with paginated data
     res.status(200).json({
       success: true,
       data: session,
+      pagination: {
+        total,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
     });
   } catch (error) {
     console.error("Get user session error:", error);
@@ -312,7 +378,6 @@ export const getUserSession = async (req, res) => {
     });
   }
 };
-
 export const deleteUserSessionDataAdmin = async (req, res) => {
   const { id } = req.params;
 

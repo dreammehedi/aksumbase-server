@@ -57,7 +57,12 @@ DashboardRouter.delete(
   deleteUserSessionDataAdmin
 );
 
-DashboardRouter.get("/user/users-session", verifyToken, getUserSession);
+DashboardRouter.get(
+  "/user/users-session",
+  verifyToken,
+  paginationMiddleware,
+  getUserSession
+);
 
 DashboardRouter.get(
   "/admin/all-property",
