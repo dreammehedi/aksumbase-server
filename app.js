@@ -38,6 +38,8 @@ import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js"
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
 import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
 import UserReviewRouter from "./routes/property/userReview.route.js";
+import SellBannerRouter from "./routes/other/sellerPageBanner.route.js";
+import SellTypesRouter from "./routes/other/sellTypes.route.js";
 
 // Configure environment variables
 dotenv.config();
@@ -177,6 +179,8 @@ app.use("/api", BlogRouter);
 app.use("/api/authentication", AuthenticationRouter);
 app.use("/api/auth", AuthRouter);
 app.use("/api", EmailConfigurationRouter);
+app.use("/api", SellBannerRouter);
+app.use("/api", SellTypesRouter);
 app.use("/api", SellerResourcesRouter);
 app.use("/api", DevelopmentPlatformRouter);
 app.use("/api", PropertyRouter);
