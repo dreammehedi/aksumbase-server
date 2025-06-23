@@ -16,8 +16,8 @@ SellTypesRouter.get("/sell-types", getSellTypes);
 // Admin - update a specific type
 SellTypesRouter.put(
   "/sell-types/:id",
-  // verifyToken,
-  // verifyAdminOld,
+  verifyToken,
+  verifyAdminOld,
   upload.single("image"),
   updateSellType
 );
