@@ -75,21 +75,76 @@ export const getAdminDashboardOverview = async (req, res, next) => {
 export const getAllUsersByAdmin = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};
-    const search = req.query.search || "";
-    const role = req.query.role || null; // e.g., 'admin', 'user', 'moderator'
+    const {
+      search = "",
+      role,
+      email = null,
+      city = null,
+      state = null,
+      zipCode = null,
+      phone = null,
+      address = null,
+    } = req.query;
 
-    const where = {
-      AND: [
-        role ? { role } : {},
-        {
+    // Define allowed roles
+    const allowedRoles = [
+      "user",
+      "admin",
+      "agent_broker",
+      "property_manager",
+      "homeowner_landlord",
+    ];
+
+    // Validate role
+    if (!role) {
+      return res.status(400).json({
+        success: false,
+        message: "Role query parameter is required.",
+      });
+    }
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid role value. Allowed values: ${allowedRoles.join(
+          ", "
+        )}`,
+      });
+    }
+
+    // Helper for partial match filter
+    const exactOrContains = (fieldValue) =>
+      fieldValue ? { contains: fieldValue, mode: "insensitive" } : undefined;
+
+    // Compose OR filter for search on multiple fields
+    const searchFilter = search
+      ? {
           OR: [
             { username: { contains: search, mode: "insensitive" } },
             { email: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { state: { contains: search, mode: "insensitive" } },
+            { zipCode: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
           ],
-        },
+        }
+      : {};
+
+    // Build the Prisma where filter
+    const where = {
+      AND: [
+        { role },
+        email ? { email: exactOrContains(email) } : {},
+        city ? { city: exactOrContains(city) } : {},
+        state ? { state: exactOrContains(state) } : {},
+        zipCode ? { zipCode: exactOrContains(zipCode) } : {},
+        phone ? { phone: exactOrContains(phone) } : {},
+        address ? { address: exactOrContains(address) } : {},
+        searchFilter,
       ],
     };
 
+    // Query users
     const data = await prisma.user.findMany({
       where,
       skip: Number(skip),
@@ -100,6 +155,11 @@ export const getAllUsersByAdmin = async (req, res) => {
         username: true,
         email: true,
         role: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        phone: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -108,14 +168,14 @@ export const getAllUsersByAdmin = async (req, res) => {
 
     const total = await prisma.user.count({ where });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data,
       pagination: { total, skip: Number(skip), limit: Number(limit) },
     });
   } catch (error) {
     console.error("Get all users error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch all users",
     });
@@ -126,29 +186,46 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};
     const search = req.query.search || "";
-    const role = req.query.role || null;
+    const email = req.query.email || "";
+    const role = req.query.role || "";
+    const isActiveRaw = req.query.isActive;
 
-    // Build the user filtering condition
+    // Convert isActive to a proper boolean if provided
+    const isActive =
+      isActiveRaw === "true"
+        ? true
+        : isActiveRaw === "false"
+        ? false
+        : undefined;
+
+    console.log("Parsed isActive:", isActive);
+
+    // Build user filters
     const userWhere = {
       AND: [
+        // { NOT: { role: "admin" } },
         role ? { role } : {},
-        {
-          NOT: { role: "admin" }, // Exclude admin users
-        },
-        {
-          OR: [
-            { username: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-          ],
-        },
+        email ? { email: { contains: email, mode: "insensitive" } } : {},
+        search
+          ? {
+              OR: [
+                { username: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {},
       ],
     };
 
-    // Find sessions including user data filtered by userWhere
+    // Build session filters
+    const sessionWhere = {
+      ...(typeof isActive !== "undefined" && { isActive }),
+      user: userWhere,
+    };
+
+    // 1. Fetch filtered & paginated sessions
     const data = await prisma.session.findMany({
-      where: {
-        user: userWhere,
-      },
+      where: sessionWhere,
       skip: Number(skip),
       take: Number(limit),
       orderBy: { createdAt: "desc" },
@@ -166,20 +243,21 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
       },
     });
 
-    // Count total sessions for users that match filters
-    const total = await prisma.session.count({
-      where: {
-        user: userWhere,
-      },
-    });
+    // 2. Count total
+    const total = await prisma.session.count({ where: sessionWhere });
 
+    // 3. Respond
     res.status(200).json({
       success: true,
       data,
-      pagination: { total, skip: Number(skip), limit: Number(limit) },
+      pagination: {
+        total,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
     });
   } catch (error) {
-    console.error("Get all user sessions error:", error);
+    console.error("❌ Get all user sessions error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch user sessions",
@@ -594,7 +672,7 @@ export const getAllUserRoleApplications = async (req, res) => {
               roleName: true,
             },
           },
-          transaction: {
+          transactions: {
             select: {
               id: true,
               amount: true,
