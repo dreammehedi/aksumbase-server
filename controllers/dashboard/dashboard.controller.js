@@ -235,6 +235,48 @@ export const getUserSession = async (req, res) => {
   }
 };
 
+export const deleteUserSessionDataAdmin = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Validate the session ID format (24-char MongoDB ObjectId)
+    if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid session ID format.",
+      });
+    }
+
+    // Check if session exists
+    const existingSession = await prisma.session.findUnique({
+      where: { id },
+    });
+
+    if (!existingSession) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found.",
+      });
+    }
+
+    // Delete the session
+    await prisma.session.delete({
+      where: { id },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Session deleted successfully.",
+    });
+  } catch (error) {
+    console.error("❌ Error deleting session:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete user session",
+    });
+  }
+};
+
 export const getAllProperty = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};

@@ -2,6 +2,7 @@ import express from "express";
 import { upload } from "../../config/upload.js";
 import {
   adminRequestPropertyContactUser,
+  deleteUserSessionDataAdmin,
   getAdminDashboardOverview,
   getAllProperty,
   getAllUserRoleApplications,
@@ -47,6 +48,13 @@ DashboardRouter.get(
   verifyAdminOld,
   paginationMiddleware,
   getAllUsersSessionByAdmin
+);
+
+DashboardRouter.delete(
+  "/admin/session/:id",
+  verifyToken,
+  verifyAdminOld,
+  deleteUserSessionDataAdmin
 );
 
 DashboardRouter.get("/user/users-session", verifyToken, getUserSession);
