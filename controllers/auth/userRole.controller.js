@@ -1,6 +1,10 @@
 import dayjs from "dayjs"; // For date manipulation
 import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
+import {
+  createRenewUserRoleAndTransaction,
+  createUserRoleAndTransaction,
+} from "../../utils/createUserRoleAndTransaction.js";
 
 export const createRolePurchaseIntent = async (req, res) => {
   try {
@@ -73,10 +77,14 @@ export const createRolePurchaseIntent = async (req, res) => {
   }
 };
 
+// role package purchase stripe webhook
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
-  let event;
-
+  let event = req.body;
+  console.log(
+    event,
+    "event, 'dsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjj"
+  );
   try {
     const stripe = await stripeConfig(); // returns Stripe instance
     const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
@@ -84,11 +92,10 @@ export const handleStripeWebhook = async (req, res) => {
     if (!config || !config.stripeWebhookSecret) {
       throw new Error("Stripe webhook secret not found in DB");
     }
-    // ✅ bodyParser.raw({ type: 'application/json' }) must be used in the route
     event = stripe.webhooks.constructEvent(
-      req.body, // must use `req.body` with bodyParser.raw()
+      req.body,
       sig,
-      config.stripeWebhookSecret
+      config.stripeWebhookSecret || process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
     console.error("❌ Webhook signature verification failed:", err.message);
@@ -97,56 +104,12 @@ export const handleStripeWebhook = async (req, res) => {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-
-    const { userId, rolePackageId } = session.metadata;
-    const amount = session.amount_total / 100;
-    const currency = session.currency;
-    const paymentStatus = session.payment_status;
-    const stripeId = session.id;
-    const paymentMethod = session.payment_method_types?.[0] || "card";
-
-    let invoiceUrl = null;
-
     try {
-      // ✅ Fetch hosted invoice URL if invoice ID is present
-      if (session.invoice) {
-        const stripe = await stripeConfig();
-        const invoice = await stripe.invoices.retrieve(session.invoice);
-        invoiceUrl = invoice.hosted_invoice_url;
-      }
+      await createUserRoleAndTransaction(session);
 
-      // ✅ Create UserRole entry
-      const userRole = await prisma.userRole.create({
-        data: {
-          userId,
-          rolePackageId,
-          message: null,
-          isActive: false,
-          isPaused: false,
-          isExpired: false,
-          isVerified: false,
-        },
-      });
-
-      // ✅ Create Transaction record
-      await prisma.transaction.create({
-        data: {
-          userId,
-          userRoleId: userRole.id,
-          amount,
-          currency,
-          status: paymentStatus,
-          method: paymentMethod,
-          stripeId,
-          invoiceUrl,
-        },
-      });
-
-      console.log("✅ Webhook handled: session completed");
-      return res.status(200).send("Webhook handled successfully");
+      return res.status(200).send("Handled");
     } catch (err) {
-      console.error("❌ Error during webhook handling:", err);
-      return res.status(500).send("Internal server error");
+      return res.status(500).send("Internal error");
     }
   }
 
@@ -240,77 +203,6 @@ export const activateRole = async (req, res) => {
   }
 };
 
-export const renewRole = async (req, res) => {
-  const { userId, rolePackageId } = req.body;
-
-  if (!userId || !rolePackageId) {
-    return res.status(400).json({
-      error: "Both userId and rolePackageId are required.",
-    });
-  }
-
-  try {
-    // 1. Get userRole by user and package
-    const role = await prisma.userRole.findFirst({
-      where: {
-        userId,
-        rolePackageId,
-      },
-      include: { rolePackage: true },
-    });
-
-    if (!role) {
-      return res.status(404).json({
-        error: "Role not found for this user and package.",
-      });
-    }
-
-    // 2. Check if expired based on endDate
-    const now = new Date();
-    const isActuallyExpired = role.endDate && dayjs(role.endDate).isBefore(now);
-
-    if (!isActuallyExpired && !role.isExpired) {
-      return res.status(400).json({
-        error: "Role is not expired yet. Cannot renew.",
-      });
-    }
-
-    // 3. Optionally update isExpired in DB if it's outdated
-    if (isActuallyExpired && !role.isExpired) {
-      await prisma.userRole.update({
-        where: { id: role.id },
-        data: { isExpired: true },
-      });
-    }
-
-    // 4. Calculate new start/end date
-    const newStartDate = new Date();
-    const newEndDate = dayjs(newStartDate)
-      .add(role.rolePackage.durationDays, "day")
-      .toDate();
-
-    // 5. Renew the role
-    const renewed = await prisma.userRole.update({
-      where: { id: role.id },
-      data: {
-        startDate: newStartDate,
-        endDate: newEndDate,
-        isExpired: false,
-        isActive: true,
-        isPaused: false,
-      },
-    });
-
-    res.status(200).json({
-      message: "Role renewed successfully.",
-      data: renewed,
-    });
-  } catch (error) {
-    console.error("Renew Role Error:", error.message);
-    res.status(500).json({ error: "Failed to renew role." });
-  }
-};
-
 // Get all user role applications (Admin only)
 export const getAllUserRoleApplications = async (req, res) => {
   const adminId = req.userId; // assume admin auth middleware already used
@@ -347,5 +239,83 @@ export const getAllUserRoleApplications = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+export const handleRolePackageFrontendSuccess = async (req, res) => {
+  const { sessionId } = req.query;
+
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID is required" });
+  }
+
+  try {
+    const stripe = await stripeConfig();
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const result = await createUserRoleAndTransaction(session);
+
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.error("Frontend payment-success error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// role package renew purchase stripe webhook
+export const handleRenewStripeWebhook = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event = req.body;
+  console.log(event, "event renew role purchase webhook");
+  try {
+    const stripe = await stripeConfig(); // returns Stripe instance
+    const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
+
+    if (!config || !config.stripeWebhookSecret) {
+      throw new Error("Stripe webhook secret not found in DB");
+    }
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      config.stripeWebhookSecret || process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error("❌ Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle checkout.session.completed event
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    try {
+      await createRenewUserRoleAndTransaction(session);
+
+      return res.status(200).send("Handled");
+    } catch (err) {
+      return res.status(500).send("Internal error");
+    }
+  } else {
+    res.json({ received: true }); // acknowledge other events
+  }
+};
+
+// role package renew purchase success for frontned
+export const handleRenewRolePackageFrontendSuccess = async (req, res) => {
+  const { sessionId } = req.query;
+
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID is required" });
+  }
+
+  try {
+    const stripe = await stripeConfig();
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const result = await createRenewUserRoleAndTransaction(session);
+
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.error("Frontend payment-success error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };

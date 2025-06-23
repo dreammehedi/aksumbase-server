@@ -1,4 +1,3 @@
-import bodyParser from "body-parser";
 import { v2 as cloudinary } from "cloudinary";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -10,9 +9,13 @@ import { fileURLToPath } from "url";
 // Import routes
 import Stripe from "stripe";
 import passport from "./config/passport.config.js";
-import { handleStripeWebhook } from "./controllers/auth/userRole.controller.js";
+import {
+  handleRenewStripeWebhook,
+  handleStripeWebhook,
+} from "./controllers/auth/userRole.controller.js";
 import reminderEmailJob from "./helper/reminderEmailJob.js";
 import roleExpiryChecker from "./helper/roleExpiryChecker.js";
+import relevantPropertiesEmailSend from "./helper/sendRelevantPropertiesEmail.js";
 import prisma from "./lib/prisma.js";
 import {
   AuthenticationRouter,
@@ -34,6 +37,9 @@ import { default as PropertyRouter } from "./routes/property/property.route.js";
 import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js";
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
 import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
+import UserReviewRouter from "./routes/property/userReview.route.js";
+import SellBannerRouter from "./routes/other/sellerPageBanner.route.js";
+import SellTypesRouter from "./routes/other/sellTypes.route.js";
 
 // Configure environment variables
 dotenv.config();
@@ -69,8 +75,15 @@ const app = express();
 // ✅ Stripe webhook: must use raw BEFORE JSON parser
 app.post(
   "/api/stripe/webhook",
-  bodyParser.raw({ type: "application/json" }),
+  express.raw({ type: "application/json" }),
   handleStripeWebhook
+);
+
+// ✅ Stripe webhook: must use raw BEFORE JSON parser
+app.post(
+  "/api/role-renew/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  handleRenewStripeWebhook
 );
 // Set view engine
 app.set("view engine", "ejs");
@@ -166,6 +179,8 @@ app.use("/api", BlogRouter);
 app.use("/api/authentication", AuthenticationRouter);
 app.use("/api/auth", AuthRouter);
 app.use("/api", EmailConfigurationRouter);
+app.use("/api", SellBannerRouter);
+app.use("/api", SellTypesRouter);
 app.use("/api", SellerResourcesRouter);
 app.use("/api", DevelopmentPlatformRouter);
 app.use("/api", PropertyRouter);
@@ -176,8 +191,10 @@ app.use("/api", PropertyBookmarkRouter);
 app.use("/api", PropertyTourRequestRouter);
 app.use("/api", PropertyContactUserRequestRouter);
 app.use("/api", StripeConfigurationRouter);
+app.use("/api", UserReviewRouter);
 
 // Start cron job
 roleExpiryChecker();
 reminderEmailJob();
+relevantPropertiesEmailSend();
 export default app;

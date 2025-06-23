@@ -99,26 +99,3 @@ export const getPropertyReviews = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to get reviews" });
   }
 };
-
-// Get all reviews by the user
-export const getUserReviews = async (req, res) => {
-  const userId = req.user.id;
-  const { page = 1, limit = 10 } = req.pagination;
-
-  try {
-    const reviews = await prisma.review.findMany({
-      where: { userId },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: "desc" },
-      include: { property: true },
-    });
-
-    res.status(200).json({ success: true, data: reviews });
-  } catch (error) {
-    console.error("Get User Reviews Error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to get user reviews" });
-  }
-};

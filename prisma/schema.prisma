@@ -14,6 +14,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// notification
 model Notification {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
@@ -26,6 +27,7 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// role package
 model RolePackage {
   id           String     @id @default(auto()) @map("_id") @db.ObjectId
   name         String
@@ -38,26 +40,32 @@ model RolePackage {
   userRoles    UserRole[]
 }
 
+// users
 model User {
-  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
-  username            String
-  email               String    @unique
-  password            String
-  avatar              String?
-  avatarPublicId      String?
-  phone               String?
-  bio                 String?
-  previousRole        String?
-  role                String    @default("user")
-  isAdmin             Boolean   @default(false)
-  status              Status    @default(pending)
-  resetCode           String?
-  resetCodeExpiration DateTime? @default(now())
-  flagged             Boolean?  @default(false)
-  flagReason          String?
-  isTwoFactorEnabled  Boolean   @default(false)
-  twoFactorTempToken  String?
-  twoFactorTempExp    DateTime?
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  username              String
+  email                 String    @unique
+  password              String
+  avatar                String?
+  avatarPublicId        String?
+  phone                 String?
+  bio                   String?
+  address               String?
+  city                  String?
+  state                 String?
+  zipCode               String?
+  previousRole          String?
+  role                  String    @default("user")
+  isAdmin               Boolean   @default(false)
+  status                Status    @default(pending)
+  resetCode             String?
+  resetCodeExpiration   DateTime? @default(now())
+  flagged               Boolean?  @default(false)
+  flagReason            String?
+  isNotificationEnabled Boolean   @default(true)
+  isTwoFactorEnabled    Boolean   @default(false)
+  twoFactorTempToken    String?
+  twoFactorTempExp      DateTime?
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -69,27 +77,32 @@ model User {
   userRoles                  UserRole[]
   sessions                   Session[]
   property                   Property[]
-  reviews                    Review[]
   Bookmark                   Bookmark[]
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]
   PropertyContactUserRequest PropertyContactUserRequest[]
-  transactions               Transaction[] // 1:M User → Transaction
+  transactions               Transaction[]
+
+  reviewsGiven    Review[] @relation("UserReviewsGiven")
+  reviewsReceived Review[] @relation("UserReviewsReceived")
 }
 
+// user status
 enum Status {
   active
   inactive
   pending
 }
 
+// user role name
 enum RoleName {
   homeowner_landlord
   agent_broker
-  loan_officer
+  // loan_officer
   property_manager
 }
 
+// user role
 model UserRole {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   userId        String    @db.ObjectId
@@ -106,31 +119,33 @@ model UserRole {
   createdAt     DateTime  @default(now())
 
   // Relations
-  user        User         @relation(fields: [userId], references: [id])
-  rolePackage RolePackage  @relation(fields: [rolePackageId], references: [id])
-  transaction Transaction? @relation() // 👈 1:1 (no fields/references here)
+  user         User          @relation(fields: [userId], references: [id])
+  rolePackage  RolePackage   @relation(fields: [rolePackageId], references: [id])
+  transactions Transaction[]
 }
 
+//  transaction
 model Transaction {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
-  userRoleId String   @unique @db.ObjectId
+  userRoleId String   @db.ObjectId // ✅ No @unique here
   amount     Float
   currency   String
-  status     String // e.g., "succeeded", "failed"
-  method     String? // e.g., "card"
-  stripeId   String // Stripe session ID or payment intent ID
+  status     String
+  method     String?
+  stripeId   String   @unique
   invoiceUrl String?
   createdAt  DateTime @default(now())
 
   user     User     @relation(fields: [userId], references: [id])
-  userRole UserRole @relation(fields: [userRoleId], references: [id])
+  userRole UserRole @relation(fields: [userRoleId], references: [id]) // ✅ One-to-many
 }
 
+// user login devices session
 model Session {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   userId     String    @db.ObjectId
-  token      String    
+  token      String
   deviceInfo String // user-agent + IP, etc.
   isActive   Boolean   @default(true)
   lastUsedAt DateTime?
@@ -143,19 +158,23 @@ model Session {
   @@index([userId])
 }
 
+// user get review
 model Review {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  propertyId String   @db.ObjectId
-  userId     String   @db.ObjectId
-  rating     Int // from 1 to 5
-  images     Json?
-  comment    String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  reviewerId   String   @db.ObjectId
+  targetUserId String   @db.ObjectId
+  rating       Int
+  comment      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  // Relations
-  property Property @relation(fields: [propertyId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  // ✅ Add named relations to User
+  reviewer   User @relation("UserReviewsGiven", fields: [reviewerId], references: [id])
+  targetUser User @relation("UserReviewsReceived", fields: [targetUserId], references: [id])
+
+  @@unique([reviewerId, targetUserId])
+  @@index([reviewerId])
+  @@index([targetUserId])
 }
 
 // hero banner
@@ -286,13 +305,36 @@ model EmailConfiguration {
 
 // stripe configuration
 model StripeConfiguration {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  stripeKey    String
-  stripeSecret String
-  stripeMethod String
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  stripeKey           String
+  stripeSecret        String
+  stripeMethod        String
   stripeWebhookSecret String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+
+// Sell page related models
+model SellPageBanner{
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String
+  image         String
+  imagePublicId String? // <-- Add this line
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SellTypes {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String
+  items         Json? // Each item will have { image, content }
+  image         String
+  imagePublicId String? // <-- Add this line
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 // Seller Resources
@@ -385,18 +427,19 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  Review                     Review[]
   Bookmark                   Bookmark[]
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]
   PropertyContactUserRequest PropertyContactUserRequest[]
 }
 
+// property type
 enum PropertyType {
   buy
   rent
 }
 
+// property category
 enum PropertyCategory {
   apartment
   house
@@ -408,12 +451,14 @@ enum PropertyCategory {
   duplex
 }
 
+// property status
 enum PropertyStatus {
   pending
   approved
   rejected
 }
 
+// listing type
 enum ListingType {
   agent
   fsbo
@@ -421,6 +466,7 @@ enum ListingType {
   new_construction
 }
 
+// listing status
 enum ListingStatus {
   active
   inactive
@@ -428,6 +474,7 @@ enum ListingStatus {
   archived
 }
 
+// property bookmark
 model Bookmark {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
@@ -440,6 +487,7 @@ model Bookmark {
   @@unique([userId, propertyId])
 }
 
+// property view
 model PropertyView {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
@@ -452,6 +500,7 @@ model PropertyView {
   @@unique([userId, propertyId]) // Each property only once per user
 }
 
+// property tour request
 model PropertyTourRequest {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
@@ -467,6 +516,7 @@ model PropertyTourRequest {
   property Property @relation(fields: [propertyId], references: [id])
 }
 
+// property contact user request
 model PropertyContactUserRequest {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   name       String

@@ -20,40 +20,6 @@ export const getProperty = async (req, res) => {
   }
 };
 
-// export const property = async (req, res) => {
-//   try {
-//     const { skip = 0, limit = 10 } = req.pagination || {};
-//     const search = req.query.search || "";
-
-//     const where = {
-//       OR: [
-//         { title: { contains: search, mode: "insensitive" } },
-//         { slug: { contains: search, mode: "insensitive" } },
-//       ],
-//     };
-
-//     const data = await prisma.property.findMany({
-//       where,
-//       skip: Number(skip),
-//       take: Number(limit),
-//       orderBy: { createdAt: "desc" },
-//     });
-
-//     const total = await prisma.blog.count({ where });
-
-//     res.status(200).json({
-//       success: true,
-//       data,
-//       pagination: { total, skip: Number(skip), limit: Number(limit) },
-//     });
-//   } catch (error) {
-//     console.error("Get property error:", error);
-//     res
-//       .status(500)
-//       .json({ success: false, message: "Failed to fetch property" });
-//   }
-// };
-
 export const searchProperty = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};
@@ -106,106 +72,6 @@ export const searchProperty = async (req, res) => {
       .json({ success: false, message: "Failed to fetch properties", error });
   }
 };
-
-// export const property = async (req, res) => {
-//   try {
-//     const token = req.headers.authorization?.split(" ")[1];
-//     let userId = null;
-
-//     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-//       userId = decoded.userId;
-//     });
-//     const { skip = 0, limit = 10 } = req.pagination || {};
-//     const search = req.query.search || "";
-
-//     const {
-//       city,
-//       state,
-//       zip,
-//       type,
-//       property,
-//       minPrice,
-//       maxPrice,
-//       bedrooms,
-//       bathrooms,
-//       furnished,
-//       garage,
-//       pool,
-//       listingType,
-//       listingStatus,
-//       amenities,
-//     } = req.query;
-
-//     const where = {
-//       AND: [
-//         { status: { equals: "approved" } },
-//         {
-//           OR: [
-//             { title: { contains: search, mode: "insensitive" } },
-//             { slug: { contains: search, mode: "insensitive" } },
-//             { city: { contains: search, mode: "insensitive" } },
-//             { address: { contains: search, mode: "insensitive" } },
-//             { zip: { contains: search, mode: "insensitive" } },
-//           ],
-//         },
-//         city ? { city: { equals: city, mode: "insensitive" } } : {},
-//         state ? { state: { equals: state, mode: "insensitive" } } : {},
-//         zip ? { zip: { equals: zip } } : {},
-//         type ? { type: { equals: type } } : {},
-//         property ? { property: { equals: property } } : {},
-//         listingType ? { listingType: { equals: listingType } } : {},
-//         listingStatus ? { listingStatus: { equals: listingStatus } } : {},
-//         minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
-//         maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
-//         bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
-//         bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
-//         furnished !== undefined ? { furnished: furnished === "true" } : {},
-//         garage !== undefined ? { garage: garage === "true" } : {},
-//         pool !== undefined ? { pool: pool === "true" } : {},
-//         // amenities filter (matches any of the provided amenities)
-//         amenities
-//           ? {
-//               amenities: {
-//                 hasSome: Array.isArray(amenities)
-//                   ? amenities
-//                   : amenities.split(","),
-//               },
-//             }
-//           : {},
-//       ],
-//     };
-
-//     const bookmarks = await prisma.bookmark.findMany({
-//       where: { userId },
-//       include: { property: true },
-//       orderBy: { createdAt: "desc" },
-//     });
-
-//     const data = await prisma.property.findMany({
-//       where,
-//       skip: Number(skip),
-//       take: Number(limit),
-//       orderBy: { createdAt: "desc" },
-//     });
-
-//     const total = await prisma.property.count({ where });
-
-//     res.status(200).json({
-//       success: true,
-//       data,
-//       pagination: {
-//         total,
-//         skip: Number(skip),
-//         limit: Number(limit),
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Get property error:", error);
-//     res
-//       .status(500)
-//       .json({ success: false, message: "Failed to fetch property" });
-//   }
-// };
 
 export const createProperty = async (req, res) => {
   try {
@@ -557,6 +423,18 @@ export const deleteProperty = async (req, res) => {
 export const getPropertyBySlug = async (req, res) => {
   const { slug } = req.params;
 
+  let userId;
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      userId = decoded.userId;
+    } catch (err) {
+      console.warn("Invalid or expired token:", err.message);
+    }
+  }
+
   try {
     const property = await prisma.property.findUnique({
       where: { slug },
@@ -568,39 +446,49 @@ export const getPropertyBySlug = async (req, res) => {
         .json({ success: false, message: "Property not found" });
     }
 
-    // Update the visit count
     await prisma.property.update({
-      where: { slug },
+      where: { slug, status: "approved" },
       data: {
-        views: {
-          increment: 1,
-        },
+        views: { increment: 1 },
       },
     });
 
-    // Get relevant properties (e.g., same category, city, and not the current one)
+    if (userId) {
+      try {
+        await prisma.propertyView.create({
+          data: {
+            userId,
+            propertyId: property.id,
+          },
+        });
+      } catch (err) {
+        if (
+          err.code !== "P2002" ||
+          !err.meta?.target?.includes("userId_propertyId")
+        ) {
+          console.error("Property view tracking failed:", err);
+        }
+      }
+    }
+
     const relevantProperties = await prisma.property.findMany({
       where: {
-        id: {
-          not: property.id,
-        },
+        id: { not: property.id },
         address: property?.address || "",
         city: property?.city || "",
         state: property?.state || "",
         type: property?.type || "",
         status: "approved",
       },
-      take: 20, // limit the number of relevant properties
-      orderBy: {
-        createdAt: "desc",
-      },
+      take: 20,
+      orderBy: { createdAt: "desc" },
     });
 
     res.status(200).json({
       success: true,
       data: {
         property,
-        relevantProperties: relevantProperties || [],
+        relevantProperties,
       },
     });
   } catch (error) {
@@ -728,128 +616,6 @@ export const property = async (req, res) => {
     const where = {
       AND: [
         { status: { equals: "approved" } },
-        {
-          OR: [
-            { title: { contains: search, mode: "insensitive" } },
-            { slug: { contains: search, mode: "insensitive" } },
-            { city: { contains: search, mode: "insensitive" } },
-            { address: { contains: search, mode: "insensitive" } },
-            { zip: { contains: search, mode: "insensitive" } },
-          ],
-        },
-        city ? { city: { equals: city, mode: "insensitive" } } : {},
-        state ? { state: { equals: state, mode: "insensitive" } } : {},
-        zip ? { zip: { equals: zip } } : {},
-        type ? { type: { equals: type } } : {},
-        property ? { property: { equals: property } } : {},
-        listingType ? { listingType: { equals: listingType } } : {},
-        listingStatus ? { listingStatus: { equals: listingStatus } } : {},
-        minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
-        maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
-        bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
-        bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
-        furnished !== undefined ? { furnished: furnished === "true" } : {},
-        garage !== undefined ? { garage: garage === "true" } : {},
-        pool !== undefined ? { pool: pool === "true" } : {},
-        amenities
-          ? {
-              amenities: {
-                hasSome: Array.isArray(amenities)
-                  ? amenities
-                  : amenities.split(","),
-              },
-            }
-          : {},
-      ],
-    };
-
-    // 4. Fetch properties
-    const [properties, total] = await Promise.all([
-      prisma.property.findMany({
-        where,
-        skip: Number(skip),
-        take: Number(limit),
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.property.count({ where }),
-    ]);
-
-    // 5. Get user bookmark property IDs (if user is logged in)
-    let bookmarkedPropertyIds = [];
-
-    if (userId) {
-      const bookmarks = await prisma.bookmark.findMany({
-        where: { userId },
-        select: { propertyId: true, userId: true },
-      });
-      bookmarkedPropertyIds = bookmarks.map((b) => b.propertyId);
-    }
-
-    // 6. Add `isBookmarked` to each property
-    const updatedProperties = properties.map((prop) => {
-      return {
-        ...prop,
-        isBookmarked: bookmarkedPropertyIds.includes(prop.id),
-      };
-    });
-
-    // 7. Response
-    res.status(200).json({
-      success: true,
-      data: updatedProperties,
-      pagination: {
-        total,
-        skip: Number(skip),
-        limit: Number(limit),
-      },
-    });
-  } catch (error) {
-    console.error("Get property error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch property",
-    });
-  }
-};
-
-// get property by user
-export const getPropertyByUser = async (req, res) => {
-  try {
-    const userId = req.userId;
-    if (!userId)
-      return res.status(400).json({ message: "User ID not found from token." });
-
-    if (!userEmail)
-      return res
-        .status(400)
-        .json({ message: "User Email not found from token." });
-
-    // 3. Get filters
-    const { skip = 0, limit = 10 } = req.pagination || {};
-    const search = req.query.search || "";
-
-    const {
-      city,
-      state,
-      zip,
-      type,
-      property,
-      minPrice,
-      maxPrice,
-      bedrooms,
-      bathrooms,
-      furnished,
-      garage,
-      pool,
-      listingType,
-      listingStatus,
-      amenities,
-    } = req.query;
-
-    const where = {
-      AND: [
-        { status: { equals: "approved" } },
-        { userId: { equals: userId } }, // ✅ This limits results to properties added by the user
         {
           OR: [
             { title: { contains: search, mode: "insensitive" } },

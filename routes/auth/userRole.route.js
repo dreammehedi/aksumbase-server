@@ -4,7 +4,8 @@ import {
   activateRole,
   createRolePurchaseIntent,
   getAllUserRoleApplications,
-  renewRole,
+  handleRenewRolePackageFrontendSuccess,
+  handleRolePackageFrontendSuccess,
 } from "../../controllers/auth/userRole.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
@@ -24,11 +25,21 @@ UserRoleRouter.post(
   upload.none(),
   activateRole
 );
-UserRoleRouter.post("/renew", verifyToken, upload.none(), renewRole);
 UserRoleRouter.get(
   "/get-role-applications",
   verifyToken,
   getAllUserRoleApplications
 );
 
+UserRoleRouter.get(
+  "/role-package-payment-success",
+  verifyToken,
+  handleRolePackageFrontendSuccess
+);
+
+UserRoleRouter.get(
+  "/renew-role-package-payment-success",
+  verifyToken,
+  handleRenewRolePackageFrontendSuccess
+);
 export default UserRoleRouter;
