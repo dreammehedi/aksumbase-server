@@ -1328,6 +1328,7 @@ export const getSingleUserProfile = async (req, res) => {
             city: true,
             state: true,
             zip: true,
+            images: true,
             latitude: true,
             longitude: true,
             neighborhood: true,
