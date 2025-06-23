@@ -14,6 +14,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// notification
 model Notification {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
@@ -26,6 +27,7 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// role package
 model RolePackage {
   id           String     @id @default(auto()) @map("_id") @db.ObjectId
   name         String
@@ -38,6 +40,7 @@ model RolePackage {
   userRoles    UserRole[]
 }
 
+// users
 model User {
   id                    String    @id @default(auto()) @map("_id") @db.ObjectId
   username              String
@@ -84,19 +87,22 @@ model User {
   reviewsReceived Review[] @relation("UserReviewsReceived")
 }
 
+// user status
 enum Status {
   active
   inactive
   pending
 }
 
+// user role name
 enum RoleName {
   homeowner_landlord
   agent_broker
-  loan_officer
+  // loan_officer
   property_manager
 }
 
+// user role
 model UserRole {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   userId        String    @db.ObjectId
@@ -118,8 +124,7 @@ model UserRole {
   transactions Transaction[]
 }
 
-
-
+//  transaction
 model Transaction {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
@@ -136,6 +141,7 @@ model Transaction {
   userRole UserRole @relation(fields: [userRoleId], references: [id]) // ✅ One-to-many
 }
 
+// user login devices session
 model Session {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   userId     String    @db.ObjectId
@@ -152,6 +158,7 @@ model Session {
   @@index([userId])
 }
 
+// user get review
 model Review {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   reviewerId   String   @db.ObjectId
@@ -403,11 +410,13 @@ model Property {
   PropertyContactUserRequest PropertyContactUserRequest[]
 }
 
+// property type
 enum PropertyType {
   buy
   rent
 }
 
+// property category
 enum PropertyCategory {
   apartment
   house
@@ -419,12 +428,14 @@ enum PropertyCategory {
   duplex
 }
 
+// property status
 enum PropertyStatus {
   pending
   approved
   rejected
 }
 
+// listing type
 enum ListingType {
   agent
   fsbo
@@ -432,6 +443,7 @@ enum ListingType {
   new_construction
 }
 
+// listing status
 enum ListingStatus {
   active
   inactive
@@ -439,6 +451,7 @@ enum ListingStatus {
   archived
 }
 
+// property bookmark
 model Bookmark {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
@@ -451,6 +464,7 @@ model Bookmark {
   @@unique([userId, propertyId])
 }
 
+// property view
 model PropertyView {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
@@ -463,6 +477,7 @@ model PropertyView {
   @@unique([userId, propertyId]) // Each property only once per user
 }
 
+// property tour request
 model PropertyTourRequest {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
@@ -478,6 +493,7 @@ model PropertyTourRequest {
   property Property @relation(fields: [propertyId], references: [id])
 }
 
+// property contact user request
 model PropertyContactUserRequest {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   name       String

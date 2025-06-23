@@ -15,6 +15,7 @@ import {
 } from "./controllers/auth/userRole.controller.js";
 import reminderEmailJob from "./helper/reminderEmailJob.js";
 import roleExpiryChecker from "./helper/roleExpiryChecker.js";
+import relevantPropertiesEmailSend from "./helper/sendRelevantPropertiesEmail.js";
 import prisma from "./lib/prisma.js";
 import {
   AuthenticationRouter,
@@ -191,4 +192,5 @@ app.use("/api", UserReviewRouter);
 // Start cron job
 roleExpiryChecker();
 reminderEmailJob();
+relevantPropertiesEmailSend();
 export default app;
