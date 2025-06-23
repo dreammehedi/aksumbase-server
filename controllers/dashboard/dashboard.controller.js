@@ -1300,12 +1300,25 @@ export const getUsersByRole = async (req, res) => {
         return dateA - dateB;
       });
 
+    const total = await prisma.user.count({
+      where: {
+        role: { in: rolesToQuery },
+        OR: [
+          { email: { contains: search, mode: "insensitive" } },
+          { address: { contains: search, mode: "insensitive" } },
+          { city: { contains: search, mode: "insensitive" } },
+          { state: { contains: search, mode: "insensitive" } },
+          { zipCode: { contains: search, mode: "insensitive" } },
+        ],
+      },
+    });
+
     res.status(200).json({
       success: true,
       role,
       data: filtered,
       pagination: {
-        total: filtered.length,
+        total,
         skip: Number(skip),
         limit: Number(limit),
       },
@@ -1318,6 +1331,7 @@ export const getUsersByRole = async (req, res) => {
     });
   }
 };
+
 export const getSingleUserProfile = async (req, res) => {
   const { id } = req.params;
 
