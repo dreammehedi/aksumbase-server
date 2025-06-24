@@ -420,6 +420,60 @@ export const deleteUserSessionDataAdmin = async (req, res) => {
   }
 };
 
+export const deleteMySession = async (req, res) => {
+  const sessionId = req.params.id;
+  const userId = req.userId; // from JWT middleware
+
+  try {
+    // ✅ Validate sessionId format
+    if (!/^[0-9a-fA-F]{24}$/.test(sessionId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid session ID format." });
+    }
+
+    // ✅ Check if user exists in the User collection
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // ✅ Find the session by ID
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized or session not found.",
+      });
+    }
+
+    // ✅ Delete or deactivate the session
+    await prisma.session.delete({
+      where: { id: sessionId },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out from this device.",
+    });
+  } catch (error) {
+    console.error("❌ Error in deleteMySession:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while logging out session.",
+    });
+  }
+};
+
 export const getAllProperty = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};

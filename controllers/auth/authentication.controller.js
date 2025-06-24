@@ -8,6 +8,7 @@ import nodemailer from "nodemailer";
 import speakeasy from "speakeasy";
 import decrypt from "../../helper/decrypt.js";
 import cloudinary from "../../utils/cloudinary.js";
+import { createError } from "../../utils/error.js";
 const prisma = new PrismaClient();
 
 export const registerUser = async (req, res) => {
@@ -613,58 +614,58 @@ export const changePassword = async (req, res) => {
   }
 };
 
-export const getUserProfile = async (req, res) => {
-  // const { email } = req.params;
+// export const getUserProfile = async (req, res) => {
+//   // const { email } = req.params;
 
-  const email = req.email;
+//   const email = req.email;
 
-  if (!email) {
-    return res.status(400).json({ message: "Email not found in token." });
-  }
+//   if (!email) {
+//     return res.status(400).json({ message: "Email not found in token." });
+//   }
 
-  try {
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email parameter is required.",
-      });
-    }
+//   try {
+//     if (!email) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email parameter is required.",
+//       });
+//     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+//     const user = await prisma.user.findUnique({
+//       where: { email },
+//     });
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
-    }
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found.",
+//       });
+//     }
 
-    // Remove password before sending
-    const {
-      password,
-      resetCode,
-      resetCodeExpiration,
-      twoFactorTempToken,
-      twoFactorTempExp,
-      ...otherData
-    } = user;
+//     // Remove password before sending
+//     const {
+//       password,
+//       resetCode,
+//       resetCodeExpiration,
+//       twoFactorTempToken,
+//       twoFactorTempExp,
+//       ...otherData
+//     } = user;
 
-    res.status(200).json({
-      success: true,
-      message: "User profile retrieved successfully.",
-      payload: otherData,
-    });
-  } catch (error) {
-    console.error("Error fetching user profile:", error);
-    res.status(500).json({
-      success: false,
-      message:
-        error.message || "An error occurred while fetching the user profile.",
-    });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: "User profile retrieved successfully.",
+//       payload: otherData,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching user profile:", error);
+//     res.status(500).json({
+//       success: false,
+//       message:
+//         error.message || "An error occurred while fetching the user profile.",
+//     });
+//   }
+// };
 
 export const googleLogin = async (req, res) => {
   try {
@@ -809,4 +810,73 @@ export const remove2FA = async (req, res) => {
   });
 
   res.json({ success: true, message: "Remove 2FA successful" });
+};
+
+export const getUserProfile = async (req, res, next) => {
+  const email = req.email;
+  const token = req.token;
+
+  console.log(token, "token");
+
+  if (!email) {
+    return res.status(400).json({ message: "Email not found in token." });
+  }
+
+  if (!token) {
+    return res.status(400).json({ message: "Token not found in token." });
+  }
+
+  try {
+    // Fetch user
+    const user = await prisma.user.findFirst({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Fetch session by token using findFirst
+    const session = await prisma.session.findFirst({
+      where: { token },
+    });
+
+    if (!session || !session.isActive) {
+      return next(createError(403, "Session is expired!"));
+    }
+
+    // Sanitize user data
+    const {
+      password,
+      resetCode,
+      resetCodeExpiration,
+      twoFactorTempToken,
+      twoFactorTempExp,
+      ...userData
+    } = user;
+
+    // Send response
+    res.status(200).json({
+      success: true,
+      message: "User profile retrieved successfully.",
+      payload: {
+        user: userData,
+        session: {
+          id: session.id,
+          deviceInfo: session.deviceInfo,
+          isActive: session.isActive,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({
+      success: false,
+      message:
+        error.message || "An error occurred while fetching the user profile.",
+    });
+  }
 };
