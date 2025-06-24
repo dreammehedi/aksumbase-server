@@ -704,6 +704,12 @@ export const googleLogin = async (req, res) => {
       }
     );
 
+    // Step 3: Update session with real token
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { token },
+    });
+
     const frontendURL = `${process.env.FRONTEND_LINK}/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
     res.redirect(frontendURL);
   } catch (error) {
