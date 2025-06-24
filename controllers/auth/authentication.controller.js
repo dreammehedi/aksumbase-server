@@ -870,13 +870,11 @@ export const getUserProfile = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "User profile retrieved successfully.",
-      payload: {
-        user: userData,
-        session: {
-          id: session.id,
-          deviceInfo: session.deviceInfo,
-          isActive: session.isActive,
-        },
+      payload: userData,
+      session: {
+        id: session.id,
+        deviceInfo: session.deviceInfo,
+        isActive: session.isActive,
       },
     });
   } catch (error) {
