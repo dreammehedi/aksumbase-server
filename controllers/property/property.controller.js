@@ -208,7 +208,10 @@ export const createProperty = async (req, res) => {
         listingStatus,
         listingType,
         userId,
-        status: user?.role === "agent" ? "approved" : "pending",
+        status:
+          user?.role === "agent_broker" || user?.role === "property_manager"
+            ? "approved"
+            : "pending",
         userName: user?.username,
         userAvatar: user?.image,
         userEmail: user?.email,

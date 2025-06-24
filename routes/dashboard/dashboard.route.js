@@ -17,6 +17,7 @@ import {
   getUsersByRole,
   getUserSession,
   renewRolePurchaseIntent,
+  updateMultiplePropertyFlagged,
   updateMultiplePropertyStatus,
   userRequestPropertyContactUser,
   userRequestTour,
@@ -79,8 +80,14 @@ DashboardRouter.put(
   "/admin/property/update-status",
   verifyToken,
   verifyAdminOld,
-  paginationMiddleware,
   updateMultiplePropertyStatus
+);
+
+DashboardRouter.put(
+  "/admin/property/update-flagged",
+  verifyToken,
+  verifyAdminOld,
+  updateMultiplePropertyFlagged
 );
 
 DashboardRouter.get(

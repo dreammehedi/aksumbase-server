@@ -597,6 +597,42 @@ export const updateMultiplePropertyStatus = async (req, res) => {
   }
 };
 
+export const updateMultiplePropertyFlagged = async (req, res) => {
+  try {
+    const { ids = [], status } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Property IDs are required.",
+      });
+    }
+
+    if (!["pending", "approved"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status provided.",
+      });
+    }
+
+    const updated = await prisma.property.updateMany({
+      where: { id: { in: ids } },
+      data: { flagStatus: status },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${updated.count} properties updated to "${status}"`,
+    });
+  } catch (error) {
+    console.error("Update property flagged status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update property flagged status",
+    });
+  }
+};
+
 export const userRequestTour = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};
