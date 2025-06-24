@@ -217,9 +217,11 @@ export const loginUser = async (req, res) => {
 };
 
 // --------------------- LOGOUT ---------------------
+
 export const logout = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
+
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -240,15 +242,15 @@ export const logout = async (req, res) => {
       });
     }
 
-    await prisma.session.update({
+    // ✅ Delete session from DB
+    await prisma.session.delete({
       where: { id: session.id },
-      data: { isActive: false },
     });
 
-    res.clearCookie("token"); // Optional if you're using cookies
+    res.clearCookie("token"); // optional for cookie-based auth
     res.status(200).json({
       success: true,
-      message: "Logged out successfully.",
+      message: "Logged out successfully and session deleted.",
     });
   } catch (error) {
     console.error("Logout Error:", error);
