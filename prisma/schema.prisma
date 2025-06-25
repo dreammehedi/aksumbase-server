@@ -40,8 +40,6 @@ model RolePackage {
   userRoles    UserRole[]
 }
 
-
-
 // users
 model User {
   id                    String    @id @default(auto()) @map("_id") @db.ObjectId
@@ -316,9 +314,8 @@ model StripeConfiguration {
   updatedAt           DateTime @updatedAt
 }
 
-
 // Sell page related models
-model SellPageBanner{
+model SellPageBanner {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   title         String
   description   String
@@ -411,7 +408,7 @@ model Property {
   description String
 
   listingStatus ListingStatus? // optional if you want to use it separately
-  listingType   ListingType? // agent, fsbo, etc.
+  listingType   String
 
   userId     String  @db.ObjectId
   user       User    @relation(fields: [userId], references: [id])
@@ -458,13 +455,6 @@ enum PropertyStatus {
   pending
   approved
   rejected
-}
-
-// listing type
-enum ListingType {
-  agent_broker
-  user
-  property_manager
 }
 
 // listing status
@@ -531,7 +521,6 @@ model PropertyContactUserRequest {
   property   Property @relation(fields: [propertyId], references: [id])
 }
 
-
 // contact user
 model ContactUser {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -542,7 +531,6 @@ model ContactUser {
   createdAt DateTime @default(now())
 }
 
-
 // get estimate
 model GetEstimate {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -550,13 +538,12 @@ model GetEstimate {
   createdAt DateTime @default(now())
 }
 
-
 // faqs
 model Faqs {
-  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
-  question            String
-  slug                String   @unique // for SEO-friendly URLs
-  answer              String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  question  String
+  slug      String   @unique // for SEO-friendly URLs
+  answer    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

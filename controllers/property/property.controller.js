@@ -112,7 +112,7 @@ export const createProperty = async (req, res) => {
     } = req.body;
 
     const userId = req.userId;
-
+    console.log(req.body);
     if (!userId)
       return res.status(400).json({ message: "User ID not found from token." });
 
@@ -141,6 +141,8 @@ export const createProperty = async (req, res) => {
         message: "User not found.",
       });
     }
+
+    console.log(user.role);
     // Parse amenities if it comes as a JSON string
     let amenitiesArray = [];
     try {
@@ -217,7 +219,7 @@ export const createProperty = async (req, res) => {
         restaurant,
         description,
         listingStatus: "active",
-        listingType: user?.role || "user",
+        listingType: user?.role,
         userId,
         status:
           user?.role === "agent_broker" || user?.role === "property_manager"
@@ -286,7 +288,6 @@ export const updateProperty = async (req, res) => {
       restaurant,
       description,
       listingStatus,
-      listingType,
     } = req.body;
 
     const userId = req.userId;
@@ -385,7 +386,6 @@ export const updateProperty = async (req, res) => {
         restaurant,
         description,
         listingStatus,
-        listingType,
         images: uploadedImages,
       },
     });
