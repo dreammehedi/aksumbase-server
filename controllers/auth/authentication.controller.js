@@ -836,7 +836,7 @@ export const getUserProfile = async (req, res, next) => {
 
   try {
     // Fetch user
-    const user = await prisma.user.findFirst({
+    const user = await prisma.user.findUnique({
       where: { email },
     });
 
