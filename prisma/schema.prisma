@@ -368,7 +368,8 @@ model DevelopmentPlatform {
 model Property {
   id           String  @id @default(auto()) @map("_id") @db.ObjectId
   title        String
-  slug         String  @unique // for SEO-friendly URLs
+  // slug         String  @unique // for SEO-friendly URLs
+  slug         String
   price        Float
   address      String?
   city         String?
@@ -420,7 +421,6 @@ model Property {
 
   status     PropertyStatus @default(pending)
   flagged    Boolean        @default(false)
-  aiFlagged  Boolean        @default(false)
   reportedBy String[]       @default([])
   flagReason String?
   flagStatus String?        @default("pending")

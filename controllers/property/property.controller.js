@@ -169,6 +169,19 @@ export const createProperty = async (req, res) => {
         publicId: file.filename,
       }))
     );
+
+    const existingProperty = await prisma.property.findFirst({
+      where: {
+        OR: [
+          { slug },
+          {
+            latitude: latitude,
+            longitude: longitude,
+          },
+        ],
+      },
+    });
+
     const newProperty = await prisma.property.create({
       data: {
         title,
@@ -206,7 +219,7 @@ export const createProperty = async (req, res) => {
         restaurant,
         description,
         listingStatus,
-        listingType,
+        listingType: user?.role || null,
         userId,
         status:
           user?.role === "agent_broker" || user?.role === "property_manager"
@@ -216,6 +229,13 @@ export const createProperty = async (req, res) => {
         userAvatar: user?.image,
         userEmail: user?.email,
         images: uploadedImages,
+        flagStatus: existingProperty ? "approved" : "pending",
+        flagged: existingProperty ? true : false,
+        flagReason: existingProperty
+          ? "Property data already exist. Duplicate property not allow!"
+          : "",
+        flaggedAt: existingProperty ? new Date() : null,
+        reportedBy: existingProperty ? ["Reported by data created time."] : [],
       },
     });
 

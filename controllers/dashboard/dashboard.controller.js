@@ -599,7 +599,7 @@ export const updateMultiplePropertyStatus = async (req, res) => {
 
 export const updateMultiplePropertyFlagged = async (req, res) => {
   try {
-    const { ids = [], status } = req.body;
+    const { ids = [], flagged, reportedBy, flagReason } = req.body;
 
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({
@@ -608,21 +608,39 @@ export const updateMultiplePropertyFlagged = async (req, res) => {
       });
     }
 
-    if (!["pending", "approved"].includes(status)) {
+    if (
+      !Array.isArray(reportedBy) ||
+      reportedBy.length === 0 ||
+      typeof flagReason !== "string" ||
+      flagReason.trim() === "" ||
+      typeof flagged !== "boolean"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status provided.",
+        message:
+          "Reported by, Flag Reason, and Flagged status are required and must be valid.",
       });
     }
 
+    // Prepare data to update (only include fields that are defined)
+    const updateData = {
+      flagStatus: flagged ? "approved" : "pending",
+    };
+
+    if (typeof flagged === "boolean") updateData.flagged = flagged;
+    if (Array.isArray(reportedBy)) updateData.reportedBy = reportedBy;
+    if (typeof flagReason === "string") updateData.flagReason = flagReason;
+    updateData.flaggedAt = new Date();
+
     const updated = await prisma.property.updateMany({
       where: { id: { in: ids } },
-      data: { flagStatus: status },
+      data: updateData,
     });
 
     res.status(200).json({
       success: true,
-      message: `${updated.count} properties updated to "${status}"`,
+      message: `${updated.count} properties updated.`,
+      data: updateData,
     });
   } catch (error) {
     console.error("Update property flagged status error:", error);
