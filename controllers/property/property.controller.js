@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 export const getProperty = async (req, res) => {
   try {
     const data = await prisma.property.findMany({
-      where: { status: "approved" },
+      where: { status: "approved", flagged: false },
       orderBy: { createdAt: "desc" },
     });
     res.status(200).json({ success: true, data });
@@ -459,10 +459,12 @@ export const getPropertyBySlug = async (req, res) => {
   }
 
   try {
-    const property = await prisma.property.findUnique({
-      where: { slug },
+    const property = await prisma.property.findFirst({
+      where: {
+        slug: "property-check",
+        status: "approved",
+      },
     });
-
     if (!property) {
       return res
         .status(404)
@@ -470,9 +472,11 @@ export const getPropertyBySlug = async (req, res) => {
     }
 
     await prisma.property.update({
-      where: { slug, status: "approved" },
+      where: { id: property.id },
       data: {
-        views: { increment: 1 },
+        views: {
+          increment: 1,
+        },
       },
     });
 
@@ -502,6 +506,7 @@ export const getPropertyBySlug = async (req, res) => {
         state: property?.state || "",
         type: property?.type || "",
         status: "approved",
+        flagged: false,
       },
       take: 20,
       orderBy: { createdAt: "desc" },
@@ -638,7 +643,8 @@ export const property = async (req, res) => {
 
     const where = {
       AND: [
-        { status: { equals: "approved" } },
+        { status: "approved", flagged: false },
+
         {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
