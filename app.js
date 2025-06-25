@@ -31,6 +31,7 @@ import MortageToolsRouter from "./routes/home/mortageTools.route.js";
 import BlogRouter from "./routes/other/blog.route.js";
 import ContactUserRouter from "./routes/other/contactUser.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
+import FaqsRouter from "./routes/other/faqs.route.js";
 import GetEstimateRouter from "./routes/other/getEstimate.route.js";
 import OtherRouter from "./routes/other/other.route.js";
 import SellBannerRouter from "./routes/other/sellerPageBanner.route.js";
@@ -196,6 +197,7 @@ app.use("/api", StripeConfigurationRouter);
 app.use("/api", UserReviewRouter);
 app.use("/api", ContactUserRouter);
 app.use("/api", GetEstimateRouter);
+app.use("/api", FaqsRouter);
 
 // Start cron job
 roleExpiryChecker();
