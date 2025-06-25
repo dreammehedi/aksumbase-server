@@ -15,6 +15,7 @@ export const verifyToken = (req, res, next) => {
     req.email = decoded.email;
     req.role = decoded.role;
     req.token = token;
+    req.sessionId = decoded.sessionId;
     next();
   });
 };
