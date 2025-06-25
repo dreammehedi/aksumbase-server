@@ -189,8 +189,8 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
     const email = req.query.email || "";
     const role = req.query.role || "";
     const isActiveRaw = req.query.isActive;
+    const currentSessionId = req.sessionId; // ✅ Decoded from token
 
-    // Convert isActive to a proper boolean if provided
     const isActive =
       isActiveRaw === "true"
         ? true
@@ -198,12 +198,8 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
         ? false
         : undefined;
 
-    console.log("Parsed isActive:", isActive);
-
-    // Build user filters
     const userWhere = {
       AND: [
-        // { NOT: { role: "admin" } },
         role ? { role } : {},
         email ? { email: { contains: email, mode: "insensitive" } } : {},
         search
@@ -217,14 +213,12 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
       ],
     };
 
-    // Build session filters
     const sessionWhere = {
       ...(typeof isActive !== "undefined" && { isActive }),
       user: userWhere,
     };
 
-    // 1. Fetch filtered & paginated sessions
-    const data = await prisma.session.findMany({
+    const sessions = await prisma.session.findMany({
       where: sessionWhere,
       skip: Number(skip),
       take: Number(limit),
@@ -243,13 +237,16 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
       },
     });
 
-    // 2. Count total
+    const sessionsWithCurrentFlag = sessions.map((session) => ({
+      ...session,
+      isCurrentUserSession: session.id === currentSessionId,
+    }));
+
     const total = await prisma.session.count({ where: sessionWhere });
 
-    // 3. Respond
     res.status(200).json({
       success: true,
-      data,
+      data: sessionsWithCurrentFlag,
       pagination: {
         total,
         skip: Number(skip),
