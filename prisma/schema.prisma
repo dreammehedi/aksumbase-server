@@ -383,9 +383,9 @@ model Property {
   type     PropertyType // buy, rent, sold
   property PropertyCategory // apartment, house, etc.
 
-  bedrooms    Int
-  bathrooms   Int
-  size        Int
+  bedrooms    Int?
+  bathrooms   Int?
+  size        Int?
   lotSize     Float?
   yearBuilt   Int?
   hoaFees     Int?
