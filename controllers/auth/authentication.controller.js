@@ -821,7 +821,7 @@ export const remove2FA = async (req, res) => {
 };
 
 export const getUserProfile = async (req, res, next) => {
-  const email = req.params;
+  const { email } = req.params; // ✅ destructure email properly
   const token = req.token;
 
   console.log(token, "token");
@@ -835,9 +835,9 @@ export const getUserProfile = async (req, res, next) => {
   }
 
   try {
-    // Fetch user
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // ✅ Correct query format
+    const user = await prisma.user.findFirst({
+      where: { email: email },
     });
 
     if (!user) {
@@ -847,7 +847,6 @@ export const getUserProfile = async (req, res, next) => {
       });
     }
 
-    // Fetch session by token using findFirst
     const session = await prisma.session.findFirst({
       where: { token },
     });
@@ -856,7 +855,6 @@ export const getUserProfile = async (req, res, next) => {
       return next(createError(403, "Session is expired!"));
     }
 
-    // Sanitize user data
     const {
       password,
       resetCode,
@@ -866,7 +864,6 @@ export const getUserProfile = async (req, res, next) => {
       ...userData
     } = user;
 
-    // Send response
     res.status(200).json({
       success: true,
       message: "User profile retrieved successfully.",
