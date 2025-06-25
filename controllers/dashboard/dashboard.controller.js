@@ -860,6 +860,7 @@ export const getUserRolePackagePurchase = async (req, res) => {
               durationDays: true,
               price: true,
               roleName: true,
+              features: true,
             },
           },
           transactions: {
