@@ -33,7 +33,7 @@ const sendEmail = async ({ to, subject, html }) => {
     }
 
     const mailOptions = {
-      from: `"FreshRole" <${
+      from: `"AksumBase" <${
         process.env.EMAIL_FROM || emailConfig.emailAddress
       }>`,
       to,

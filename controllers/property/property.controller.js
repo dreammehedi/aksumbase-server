@@ -217,7 +217,7 @@ export const createProperty = async (req, res) => {
         restaurant,
         description,
         listingStatus: "active",
-        listingType: user?.role || null,
+        listingType: user?.role || "user",
         userId,
         status:
           user?.role === "agent_broker" || user?.role === "property_manager"
