@@ -724,56 +724,97 @@ export const verify2FA = async (req, res) => {
   const { email, otp } = req.body;
 
   if (!email || !otp) {
-    return res.status(400).json({ message: "Email and OTP are required" });
+    return res.status(400).json({ message: "Email and OTP are required." });
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
 
-  if (!user)
-    return res
-      .status(404)
-      .json({ message: "User not found. Please register first." });
+    if (!user)
+      return res
+        .status(404)
+        .json({ message: "User not found. Please register first." });
 
-  if (user.status !== "active")
-    return res.status(403).json({ message: `Account is ${user.status}.` });
+    if (user.status !== "active")
+      return res.status(403).json({ message: `Account is ${user.status}.` });
 
-  if (!user.twoFactorTempToken) {
-    return res.status(400).json({ message: "Invalid request" });
+    if (!user.twoFactorTempToken || !user.twoFactorTempExp)
+      return res.status(400).json({ message: "Invalid OTP request." });
+
+    const isOtpExpired = new Date() > new Date(user.twoFactorTempExp);
+    const isOtpInvalid = user.twoFactorTempToken !== otp;
+
+    if (isOtpInvalid || isOtpExpired) {
+      return res.status(401).json({ message: "Invalid or expired OTP." });
+    }
+
+    // Clear OTP fields
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorTempToken: null,
+        twoFactorTempExp: null,
+      },
+    });
+
+    // Create session and JWT (same as loginUser)
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days
+
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        token: "temp",
+        deviceInfo,
+        expiresAt,
+      },
+    });
+
+    const jwtToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        sessionId: session.id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "3d" }
+    );
+
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { token: jwtToken },
+    });
+
+    const { id, username, role, status, createdAt, isTwoFactorEnabled } = user;
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      payload: {
+        _id: id,
+        name: username,
+        email,
+        token: jwtToken,
+        role,
+        status,
+        createdAt,
+        isTwoFactorEnabled,
+      },
+      session: {
+        id: session.id,
+        deviceInfo: session.deviceInfo,
+        isActive: session.isActive,
+        expiresAt: session.expiresAt,
+      },
+    });
+  } catch (error) {
+    console.error("2FA Verify Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Server error during 2FA verification.",
+    });
   }
-  // Check OTP match and expiration
-  if (
-    user.twoFactorTempToken !== otp ||
-    new Date() > new Date(user.twoFactorTempExp)
-  ) {
-    return res.status(401).json({ message: "Invalid or expired OTP" });
-  }
-
-  // Clear temp OTP fields
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { twoFactorTempToken: null, twoFactorTempExp: null },
-  });
-
-  // Generate access token for final login
-  const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-    expiresIn: "3d",
-  });
-
-  const { id, username, role, status, createdAt } = user;
-
-  res.status(200).json({
-    success: true,
-    message: "Login successful.",
-    payload: {
-      _id: id,
-      name: username,
-      email,
-      token: accessToken,
-      role,
-      status,
-      createdAt,
-    },
-  });
 };
 
 export const setup2FA = async (req, res) => {
