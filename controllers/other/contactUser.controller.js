@@ -37,9 +37,11 @@ export const createContactUser = async (req, res) => {
       html: emailHtml,
     });
 
-    res
-      .status(201)
-      .json({ message: "Contact submitted and email sent", data: contact });
+    res.status(201).json({
+      success: true,
+      message: "Contact submitted and email sent",
+      data: contact,
+    });
   } catch (error) {
     console.error("Error creating contact:", error);
     res.status(500).json({ error: "Server error" });
@@ -88,7 +90,7 @@ export const deleteContactById = async (req, res) => {
 
   try {
     await prisma.contactUser.delete({ where: { id } });
-    res.status(200).json({ message: "Contact deleted" });
+    res.status(200).json({ success: true, message: "Contact deleted" });
   } catch (error) {
     console.error("Error deleting contact:", error);
     res.status(500).json({ error: "Server error" });
