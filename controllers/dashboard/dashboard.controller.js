@@ -268,7 +268,7 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
 export const getUserSession = async (req, res) => {
   try {
     const userId = req.userId;
-    const sessionId = req.sessionId; // ✅ Assumes you decode this in your `verifyToken` middleware
+    const sessionId = req.sessionId; // Current session ID
     const { skip = 0, limit = 10 } = req.pagination || {};
 
     if (!userId) {
@@ -277,13 +277,9 @@ export const getUserSession = async (req, res) => {
         .json({ success: false, message: "Unauthorized access" });
     }
 
-    const session = await prisma.session.findMany({
-      where: {
-        userId,
-        NOT: {
-          id: sessionId, // ✅ Exclude current session
-        },
-      },
+    // Fetch all sessions (including current session) with pagination
+    const sessions = await prisma.session.findMany({
+      where: { userId },
       skip: Number(skip),
       take: Number(limit),
       orderBy: { createdAt: "desc" },
@@ -301,24 +297,23 @@ export const getUserSession = async (req, res) => {
       },
     });
 
-    const total = await prisma.session.count({
-      where: {
-        userId,
-        NOT: {
-          id: sessionId,
-        },
-      },
-    });
+    const total = await prisma.session.count({ where: { userId } });
 
-    if (!session || session.length === 0) {
+    if (!sessions || sessions.length === 0) {
       return res
         .status(404)
-        .json({ success: false, message: "No other sessions found" });
+        .json({ success: false, message: "No sessions found" });
     }
+
+    // Add isCurrentUserSession flag
+    const sessionsWithFlag = sessions.map((session) => ({
+      ...session,
+      isCurrentUserSession: session.id === sessionId,
+    }));
 
     res.status(200).json({
       success: true,
-      data: session,
+      data: sessionsWithFlag,
       pagination: {
         total,
         skip: Number(skip),
