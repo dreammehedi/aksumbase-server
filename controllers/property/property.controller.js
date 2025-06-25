@@ -109,8 +109,6 @@ export const createProperty = async (req, res) => {
       bus,
       restaurant,
       description,
-      listingStatus,
-      listingType,
     } = req.body;
 
     const userId = req.userId;
@@ -218,7 +216,7 @@ export const createProperty = async (req, res) => {
         bus,
         restaurant,
         description,
-        listingStatus,
+        listingStatus: "active",
         listingType: user?.role || null,
         userId,
         status:
@@ -461,7 +459,7 @@ export const getPropertyBySlug = async (req, res) => {
   try {
     const property = await prisma.property.findFirst({
       where: {
-        slug: "property-check",
+        slug: slug,
         status: "approved",
       },
     });
