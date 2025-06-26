@@ -449,7 +449,7 @@ export const getSiteConfiguration = async (req, res) => {
 };
 
 export const updateSiteConfiguration = async (req, res) => {
-  const { name, shortDescription, longDescription, id } = req.body;
+  const { name, shortDescription, longDescription, copyRights, id } = req.body;
 
   try {
     const existing = await prisma.siteConfiguration.findUnique({
@@ -466,6 +466,7 @@ export const updateSiteConfiguration = async (req, res) => {
       name,
       shortDescription,
       longDescription,
+      copyRights,
     };
 
     // ✅ Update logo if provided

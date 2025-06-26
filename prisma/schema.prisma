@@ -548,55 +548,52 @@ model Faqs {
   updatedAt DateTime @updatedAt
 }
 
-
 // contact information
 model ContactInformation {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email   String
-  email2   String?
-  phone   String
-  phone2   String?
+  email     String
+  email2    String?
+  phone     String
+  phone2    String?
   address   String
-  address2   String?
+  address2  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-
 
 // social network
 model SocialNetwork {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  facebookLink    String?
-  twitterLink     String?
-  linkedinLink    String?
-  instagramLink   String?
-  youtubeLink     String?
-  dribbleLink     String?
-  whatsappNumber  String?
-  telegramLink    String?
-  snapchatLink    String?
-  tiktokLink      String?
-  threadsLink     String?
-  pinterestLink   String?
-  redditLink      String?
-  githubLink      String?
-  websiteLink     String? 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  facebookLink   String?
+  twitterLink    String?
+  linkedinLink   String?
+  instagramLink  String?
+  youtubeLink    String?
+  dribbleLink    String?
+  whatsappNumber String?
+  telegramLink   String?
+  snapchatLink   String?
+  tiktokLink     String?
+  threadsLink    String?
+  pinterestLink  String?
+  redditLink     String?
+  githubLink     String?
+  websiteLink    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
-
 
 // site configuration
 model SiteConfiguration {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name   String
-  shortDescription   String
-  longDescription   String?
-  logo         String
-  logoPublicId String?
-  favicon         String
-  faviconPublicId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  shortDescription String
+  longDescription  String?
+  copyRights       String
+  logo             String
+  logoPublicId     String?
+  favicon          String
+  faviconPublicId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
