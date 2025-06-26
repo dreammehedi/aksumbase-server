@@ -296,3 +296,47 @@ export const updatePress = async (req, res) => {
     });
   }
 };
+
+export const getContactInformation = async (req, res) => {
+  try {
+    const data = await prisma.contactInformation.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get contact information error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch contact information" });
+  }
+};
+
+export const updateContactInformation = async (req, res) => {
+  const { email, email2, phone, phone2, address, address2, id } = req.body;
+
+  try {
+    const existing = await prisma.contactInformation.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Contact information not found" });
+    }
+
+    const updated = await prisma.contactInformation.update({
+      where: { id },
+      data: { email, email2, phone, phone2, address, address2 },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update contact information error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update contact information",
+      error: error.message,
+    });
+  }
+};

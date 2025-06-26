@@ -6,6 +6,7 @@ const OtherRouter = express.Router();
 
 import {
   getBuyingGuides,
+  getContactInformation,
   getMarketAnalysis,
   getMarketInsights,
   getPress,
@@ -13,6 +14,7 @@ import {
   getSellingTips,
   getTermsOfUse,
   updateBuyingGuides,
+  updateContactInformation,
   updateMarketAnalysis,
   updateMarketInsights,
   updatePress,
@@ -83,6 +85,15 @@ OtherRouter.put(
   verifyAdminOld,
   upload.none(),
   updatePress
+);
+
+OtherRouter.get("/contact-information", getContactInformation);
+OtherRouter.put(
+  "/contact-information",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  updateContactInformation
 );
 
 export default OtherRouter;
