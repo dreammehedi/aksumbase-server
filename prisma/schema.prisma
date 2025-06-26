@@ -561,3 +561,27 @@ model ContactInformation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+
+
+// social network
+model SocialNetwork {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  facebookLink    String?
+  twitterLink     String?
+  linkedinLink    String?
+  instagramLink   String?
+  youtubeLink     String?
+  dribbleLink     String?
+  whatsappNumber  String?
+  telegramLink    String?
+  snapchatLink    String?
+  tiktokLink      String?
+  threadsLink     String?
+  pinterestLink   String?
+  redditLink      String?
+  githubLink      String?
+  websiteLink     String? 
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

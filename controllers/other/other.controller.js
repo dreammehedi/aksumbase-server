@@ -1,5 +1,6 @@
 // controllers/other/other.controller.js
 import { PrismaClient } from "@prisma/client";
+import isValidUrl from "../../helper/isValidUrl.js";
 const prisma = new PrismaClient();
 
 // GET /api/privacy-policy
@@ -336,6 +337,97 @@ export const updateContactInformation = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update contact information",
+      error: error.message,
+    });
+  }
+};
+
+export const getSocialNetwork = async (req, res) => {
+  try {
+    const data = await prisma.socialNetwork.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get social network error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch social network" });
+  }
+};
+
+export const updateSocialNetwork = async (req, res) => {
+  const {
+    id,
+    facebookLink,
+    twitterLink,
+    linkedinLink,
+    instagramLink,
+    youtubeLink,
+    dribbleLink,
+    whatsappNumber,
+    telegramLink,
+    snapchatLink,
+    tiktokLink,
+    threadsLink,
+    pinterestLink,
+    redditLink,
+    githubLink,
+    websiteLink,
+  } = req.body;
+
+  const links = {
+    facebookLink,
+    twitterLink,
+    linkedinLink,
+    instagramLink,
+    youtubeLink,
+    dribbleLink,
+    telegramLink,
+    snapchatLink,
+    tiktokLink,
+    threadsLink,
+    pinterestLink,
+    redditLink,
+    githubLink,
+    websiteLink,
+  };
+
+  // Validate all provided URLs
+  for (const [key, value] of Object.entries(links)) {
+    if (!isValidUrl(value)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid URL format for: ${key}`,
+      });
+    }
+  }
+
+  try {
+    const existing = await prisma.socialNetwork.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Social network not found" });
+    }
+
+    const updated = await prisma.socialNetwork.update({
+      where: { id },
+      data: {
+        ...links,
+        whatsappNumber,
+      },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update social network error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update social network",
       error: error.message,
     });
   }

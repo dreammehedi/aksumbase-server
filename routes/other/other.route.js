@@ -12,6 +12,7 @@ import {
   getPress,
   getPrivacyPolicy,
   getSellingTips,
+  getSocialNetwork,
   getTermsOfUse,
   updateBuyingGuides,
   updateContactInformation,
@@ -20,6 +21,7 @@ import {
   updatePress,
   updatePrivacyPolicy,
   updateSellingTips,
+  updateSocialNetwork,
   updateTermsOfUse,
 } from "../../controllers/other/other.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -94,6 +96,15 @@ OtherRouter.put(
   verifyAdminOld,
   upload.none(),
   updateContactInformation
+);
+
+OtherRouter.get("/social-network", getSocialNetwork);
+OtherRouter.put(
+  "/social-network",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  updateSocialNetwork
 );
 
 export default OtherRouter;
