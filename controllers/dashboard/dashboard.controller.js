@@ -182,6 +182,90 @@ export const getAllUsersByAdmin = async (req, res) => {
   }
 };
 
+export const getAllAdminsByAdmin = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const {
+      search = "",
+      email = null,
+      city = null,
+      state = null,
+      zipCode = null,
+      phone = null,
+      address = null,
+    } = req.query;
+
+    // Helper for partial match filter
+    const exactOrContains = (fieldValue) =>
+      fieldValue ? { contains: fieldValue, mode: "insensitive" } : undefined;
+
+    // Compose OR filter for search on multiple fields
+    const searchFilter = search
+      ? {
+          OR: [
+            { username: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { state: { contains: search, mode: "insensitive" } },
+            { zipCode: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {};
+
+    // Build the Prisma where filter
+    const where = {
+      AND: [
+        { role: "admin" },
+        email ? { email: exactOrContains(email) } : {},
+        city ? { city: exactOrContains(city) } : {},
+        state ? { state: exactOrContains(state) } : {},
+        zipCode ? { zipCode: exactOrContains(zipCode) } : {},
+        phone ? { phone: exactOrContains(phone) } : {},
+        address ? { address: exactOrContains(address) } : {},
+        searchFilter,
+      ],
+    };
+
+    // Query users
+    const data = await prisma.user.findMany({
+      where,
+      skip: Number(skip),
+      take: Number(limit),
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        phone: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    const total = await prisma.user.count({ where });
+
+    return res.status(200).json({
+      success: true,
+      data,
+      pagination: { total, skip: Number(skip), limit: Number(limit) },
+    });
+  } catch (error) {
+    console.error("Get all admins error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch all admins",
+    });
+  }
+};
+
 export const getAllUsersSessionByAdmin = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};

@@ -118,6 +118,114 @@ export const registerUser = async (req, res) => {
   }
 };
 
+export const registerAdmin = async (req, res) => {
+  try {
+    const { email, username, password } = req.body;
+
+    const missingFields = [];
+    if (!email) missingFields.push("Email");
+    if (!username) missingFields.push("Username");
+    if (!password) missingFields.push("Password");
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `${missingFields.join(", ")} field(s) are required.`,
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long.",
+      });
+    }
+
+    // Check for existing user
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }],
+      },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already registered with this email or username.",
+      });
+    }
+
+    const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
+
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        username,
+        password: hashedPassword,
+        role: "admin",
+        isAdmin: true,
+        status: "active",
+        avatar: "",
+        avatarPublicId: "",
+        resetCode: "",
+        resetCodeExpiration: new Date(),
+      },
+    });
+
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+    // Step 1: Create session
+    const session = await prisma.session.create({
+      data: {
+        userId: newUser.id,
+        token: "temp",
+        deviceInfo,
+        expiresAt,
+      },
+    });
+
+    // Step 2: Generate JWT with session ID
+    const token = jwt.sign(
+      {
+        userId: newUser.id,
+        email: newUser.email,
+        sessionId: session.id,
+        token: newUser.token,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "3d" }
+    );
+
+    // Step 3: Update session with token
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { token },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Admin registered successfully.",
+      payload: {
+        _id: newUser.id,
+        email: newUser.email,
+        username: newUser.username,
+        role: newUser.role,
+        status: newUser.status,
+        token,
+        createdAt: newUser.createdAt,
+        isTwoFactorEnabled: newUser.isTwoFactorEnabled,
+      },
+    });
+  } catch (error) {
+    console.error("Register Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred during registration.",
+    });
+  }
+};
+
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -132,10 +240,12 @@ export const loginUser = async (req, res) => {
     if (user.status !== "active")
       return res.status(403).json({ message: `Account is ${user.status}.` });
 
-    const isAdmin = email === "admin@gmail.com";
-    const passwordMatch = isAdmin
-      ? password === user.password
-      : await bcrypt.compare(password, user.password);
+    // const isAdmin = email === "admin@gmail.com";
+    // const passwordMatch = isAdmin
+    //   ? password === user.password
+    //   : await bcrypt.compare(password, user.password);
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch)
       return res.status(401).json({ message: "Invalid email or password." });
@@ -215,8 +325,6 @@ export const loginUser = async (req, res) => {
       .json({ message: error.message || "Server error during login." });
   }
 };
-
-// --------------------- LOGOUT ---------------------
 
 export const logout = async (req, res) => {
   try {
@@ -615,59 +723,6 @@ export const changePassword = async (req, res) => {
     });
   }
 };
-
-// export const getUserProfile = async (req, res) => {
-//   // const { email } = req.params;
-
-//   const email = req.email;
-
-//   if (!email) {
-//     return res.status(400).json({ message: "Email not found in token." });
-//   }
-
-//   try {
-//     if (!email) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Email parameter is required.",
-//       });
-//     }
-
-//     const user = await prisma.user.findUnique({
-//       where: { email },
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found.",
-//       });
-//     }
-
-//     // Remove password before sending
-//     const {
-//       password,
-//       resetCode,
-//       resetCodeExpiration,
-//       twoFactorTempToken,
-//       twoFactorTempExp,
-//       ...otherData
-//     } = user;
-
-//     res.status(200).json({
-//       success: true,
-//       message: "User profile retrieved successfully.",
-//       payload: otherData,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching user profile:", error);
-//     res.status(500).json({
-//       success: false,
-//       message:
-//         error.message || "An error occurred while fetching the user profile.",
-//     });
-//   }
-// };
 
 export const googleLogin = async (req, res) => {
   try {

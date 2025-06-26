@@ -8,6 +8,7 @@ import {
   googleLogin,
   loginUser,
   logout,
+  registerAdmin,
   registerUser,
   remove2FA,
   resetPassword,
@@ -15,12 +16,20 @@ import {
   updateProfile,
   verify2FA,
 } from "../../controllers/auth/authentication.controller.js";
+import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
 const AuthenticationRouter = express.Router();
 const AuthRouter = express.Router();
 
 AuthenticationRouter.get("/user-profile/:email", verifyToken, getUserProfile);
 AuthenticationRouter.post("/user-register", upload.none(), registerUser);
+AuthenticationRouter.post(
+  "/admin-register",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  registerAdmin
+);
 AuthenticationRouter.post("/login", upload.none(), loginUser);
 AuthenticationRouter.post("/setup-2fa", verifyToken, upload.none(), setup2FA);
 AuthenticationRouter.post("/remove-2fa", verifyToken, upload.none(), remove2FA);

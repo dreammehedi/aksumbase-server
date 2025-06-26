@@ -5,6 +5,7 @@ import {
   deleteMySession,
   deleteUserSessionDataAdmin,
   getAdminDashboardOverview,
+  getAllAdminsByAdmin,
   getAllProperty,
   getAllUserRoleApplications,
   getAllUsersByAdmin,
@@ -42,6 +43,14 @@ DashboardRouter.get(
   verifyAdminOld,
   paginationMiddleware,
   getAllUsersByAdmin
+);
+
+DashboardRouter.get(
+  "/admin/all-admin",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getAllAdminsByAdmin
 );
 
 DashboardRouter.get(
