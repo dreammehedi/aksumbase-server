@@ -12,6 +12,7 @@ import {
   getPress,
   getPrivacyPolicy,
   getSellingTips,
+  getSiteConfiguration,
   getSocialNetwork,
   getTermsOfUse,
   updateBuyingGuides,
@@ -21,6 +22,7 @@ import {
   updatePress,
   updatePrivacyPolicy,
   updateSellingTips,
+  updateSiteConfiguration,
   updateSocialNetwork,
   updateTermsOfUse,
 } from "../../controllers/other/other.controller.js";
@@ -105,6 +107,18 @@ OtherRouter.put(
   verifyAdminOld,
   upload.none(),
   updateSocialNetwork
+);
+
+OtherRouter.get("/site-configuration", getSiteConfiguration);
+OtherRouter.put(
+  "/site-configuration",
+  verifyToken,
+  verifyAdminOld,
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "favicon", maxCount: 1 },
+  ]),
+  updateSiteConfiguration
 );
 
 export default OtherRouter;

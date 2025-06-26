@@ -1,5 +1,6 @@
 // controllers/other/other.controller.js
 import { PrismaClient } from "@prisma/client";
+import { cloudinary } from "../../config/cloudinary.config.js";
 import isValidUrl from "../../helper/isValidUrl.js";
 const prisma = new PrismaClient();
 
@@ -428,6 +429,76 @@ export const updateSocialNetwork = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update social network",
+      error: error.message,
+    });
+  }
+};
+
+export const getSiteConfiguration = async (req, res) => {
+  try {
+    const data = await prisma.siteConfiguration.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get site configuration error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch site configuration" });
+  }
+};
+
+export const updateSiteConfiguration = async (req, res) => {
+  const { name, shortDescription, longDescription, id } = req.body;
+
+  try {
+    const existing = await prisma.siteConfiguration.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Site configuration not found" });
+    }
+
+    const updatedFields = {
+      name,
+      shortDescription,
+      longDescription,
+    };
+
+    // ✅ Update logo if provided
+    if (req.files?.logo?.[0]) {
+      if (existing.logoPublicId) {
+        await cloudinary.uploader.destroy(existing.logoPublicId);
+      }
+
+      updatedFields.logo = req.files.logo[0].path;
+      updatedFields.logoPublicId = req.files.logo[0].filename;
+    }
+
+    // ✅ Update author favicon if provided
+    if (req.files?.favicon?.[0]) {
+      if (existing.faviconPublicId) {
+        await cloudinary.uploader.destroy(existing.faviconPublicId);
+      }
+
+      updatedFields.favicon = req.files.favicon[0].path;
+      updatedFields.faviconPublicId = req.files.favicon[0].filename;
+    }
+
+    const updated = await prisma.siteConfiguration.update({
+      where: { id },
+      data: updatedFields,
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update site configuration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update site configuration",
       error: error.message,
     });
   }

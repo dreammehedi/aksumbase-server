@@ -183,7 +183,7 @@ model HeroBanner {
   title         String
   description   String
   image         String
-  imagePublicId String? // <-- Add this line
+  imagePublicId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -584,4 +584,19 @@ model SocialNetwork {
   websiteLink     String? 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+
+// site configuration
+model SiteConfiguration {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name   String
+  shortDescription   String
+  longDescription   String?
+  logo         String
+  logoPublicId String?
+  favicon         String
+  faviconPublicId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
