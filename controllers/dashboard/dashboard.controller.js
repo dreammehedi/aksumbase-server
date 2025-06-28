@@ -72,6 +72,84 @@ export const getAdminDashboardOverview = async (req, res, next) => {
   }
 };
 
+export const getAdminAnalysisOverview = async (req, res, next) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // 1. Total users (excluding admins)
+    const totalUsers = await prisma.user.count({
+      where: {
+        NOT: {
+          role: {
+            in: ["admin", "super_admin"],
+          },
+        },
+      },
+    });
+
+    // 2. Total properties
+    const totalProperties = await prisma.property.count();
+
+    // 3. Today's listing count
+    const todayListingCount = await prisma.property.count({
+      where: {
+        createdAt: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+    });
+
+    // 4. Total flagged content
+    const totalFlaggedContent = await prisma.property.count({
+      where: {
+        flagged: true,
+      },
+    });
+
+    // 5. Total blog
+    const totalBlog = await prisma.blog.count();
+
+    // 6. Total property tour request
+    const totalPropertyTourRequest = await prisma.propertyTourRequest.count();
+
+    // 7. Total property contact user request
+    const totalPropertyContactUserRequest =
+      await prisma.propertyContactUserRequest.count();
+
+    // 8. Total contact user
+    const totalContactUser = await prisma.contactUser.count();
+
+    // 9. Total get estimate
+    const totalGetEstimate = await prisma.getEstimate.count();
+
+    // 10. Total faqs
+    const totalFaqs = await prisma.faqs.count();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalUsers,
+        totalProperties,
+        todayListingCount,
+        totalFlaggedContent,
+        totalBlog,
+        totalPropertyTourRequest,
+        totalPropertyContactUserRequest,
+        totalContactUser,
+        totalGetEstimate,
+        totalFaqs,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAllUsersByAdmin = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};

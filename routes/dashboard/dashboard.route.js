@@ -4,6 +4,7 @@ import {
   adminRequestPropertyContactUser,
   deleteMySession,
   deleteUserSessionDataAdmin,
+  getAdminAnalysisOverview,
   getAdminDashboardOverview,
   getAllAdminsByAdmin,
   getAllProperty,
@@ -35,6 +36,13 @@ DashboardRouter.get(
   verifyToken,
   verifyAdminOld,
   getAdminDashboardOverview
+);
+
+DashboardRouter.get(
+  "/admin/analysis",
+  verifyToken,
+  verifyAdminOld,
+  getAdminAnalysisOverview
 );
 
 DashboardRouter.get(
