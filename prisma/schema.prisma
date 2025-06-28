@@ -424,12 +424,16 @@ model Property {
   userAvatar String?
   userEmail  String?
 
-  status     PropertyStatus @default(pending)
-  flagged    Boolean        @default(false)
-  reportedBy String[]       @default([])
-  flagReason String?
-  flagStatus String?        @default("pending")
-  flaggedAt  DateTime?
+  status       PropertyStatus @default(pending)
+  flagged      Boolean        @default(false)
+  reportedBy   String[]       @default([])
+  flagReason   String?
+  flagStatus   String?        @default("pending")
+  flaggedAt    DateTime?
+  isSold       Boolean        @default(false)
+  soldPrice    Int            @default(0)
+  soldFeedback String?
+  soldAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

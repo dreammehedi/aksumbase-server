@@ -20,9 +20,11 @@ import {
   getUserRolePackagePurchase,
   getUsersByRole,
   getUserSession,
+  getUserStatisticsOverview,
   renewRolePurchaseIntent,
   updateMultiplePropertyFlagged,
   updateMultiplePropertyStatus,
+  updatePropertySoldStatus,
   userRequestPropertyContactUser,
   userRequestTour,
 } from "../../controllers/dashboard/dashboard.controller.js";
@@ -162,6 +164,11 @@ DashboardRouter.get(
   paginationMiddleware,
   getPropertyByUser
 );
+DashboardRouter.put(
+  "/user/property/update-sold",
+  verifyToken,
+  updatePropertySoldStatus
+);
 
 DashboardRouter.post(
   "/user/role-renew-purchase-intent",
@@ -198,6 +205,7 @@ DashboardRouter.get(
   getUserRecentActivity
 );
 
+DashboardRouter.get("/user/statistics", verifyToken, getUserStatisticsOverview);
 DashboardRouter.get("/user/by-role", paginationMiddleware, getUsersByRole);
 DashboardRouter.get("/user/user-profile/:id", getSingleUserProfile);
 export default DashboardRouter;

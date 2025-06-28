@@ -1,5 +1,6 @@
 import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
+import { createError } from "../../utils/error.js";
 
 // admin controller
 export const getAdminDashboardOverview = async (req, res, next) => {
@@ -1938,5 +1939,166 @@ export const getSingleUserProfile = async (req, res) => {
       success: false,
       message: "Failed to fetch user profile.",
     });
+  }
+};
+
+export const getUserStatisticsOverview = async (req, res) => {
+  const userId = req.userId;
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  try {
+    const [pendingCount, activeCount, soldProperties, recentSales] =
+      await Promise.all([
+        // Count of pending listings
+        prisma.property.count({
+          where: {
+            userId,
+            status: "pending",
+          },
+        }),
+
+        // Count of active listings
+        prisma.property.count({
+          where: {
+            userId,
+            status: "approved",
+            isSold: false,
+          },
+        }),
+
+        // All sold properties for user
+        prisma.property.findMany({
+          where: {
+            userId,
+            isSold: true,
+          },
+          select: {
+            soldPrice: true,
+            soldAt: true,
+          },
+        }),
+
+        // Recent sold properties (latest 5)
+        prisma.property.findMany({
+          where: {
+            userId,
+            isSold: true,
+          },
+          orderBy: {
+            soldAt: "desc",
+          },
+          take: 5,
+        }),
+      ]);
+
+    const totalRevenue = soldProperties.reduce(
+      (sum, prop) => sum + (prop.soldPrice || 0),
+      0
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        pendingCount, // pending properties count
+        activeCount, // active (approved) listings not sold
+        soldCount: soldProperties.length, // total sold count
+        totalRevenue, // total revenue from soldPrice
+        recentSales, // latest 5 sold properties
+      },
+    });
+  } catch (error) {
+    console.error("Get User Statistics Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user statistics.",
+    });
+  }
+};
+
+export const updatePropertySoldStatus = async (req, res, next) => {
+  try {
+    const { id, isSold, soldPrice, soldAt, soldFeedback } = req.body;
+    const userId = req.userId;
+
+    // 1. Check if ID is provided
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Property ID is required.",
+      });
+    }
+
+    // 2. Validate isSold
+    if (typeof isSold !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "isSold must be a boolean (true/false).",
+      });
+    }
+
+    // 3. Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // 4. Check if property exists and belongs to the user (optional: enforce ownership)
+    const property = await prisma.property.findUnique({
+      where: { id },
+    });
+
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: "Property not found.",
+      });
+    }
+
+    // Optional: Check if property belongs to the user
+    if (property.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this property.",
+      });
+    }
+
+    // 5. Validate property status
+    if (property.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "Only active properties can be marked as sold.",
+      });
+    }
+
+    // 6. Build update data
+    const updateData = {
+      isSold,
+      soldPrice: isSold ? soldPrice ?? null : null,
+      soldAt: isSold ? new Date(soldAt) ?? new Date() : null,
+      soldFeedback: isSold ? soldFeedback ?? null : null,
+    };
+
+    // 7. Update property
+    const updatedProperty = await prisma.property.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Property marked as ${isSold ? "sold" : "unsold"}.`,
+      data: updatedProperty,
+    });
+  } catch (error) {
+    console.error("Update property sold status error:", error);
+    return next(createError(500, "Failed to update sold status"));
   }
 };
