@@ -176,13 +176,13 @@ export const updateRolePackage = async (req, res) => {
     };
 
     // ✅ Handle image update
-    if (req.file?.image) {
+    if (req.file) {
       if (existing.imagePublicId) {
         await cloudinary.uploader.destroy(existing.imagePublicId);
       }
 
-      updatedFields.image = req.file.image.path;
-      updatedFields.imagePublicId = req.file.image.filename;
+      updatedFields.image = req.file.path;
+      updatedFields.imagePublicId = req.file.filename;
     }
 
     const updatedPackage = await prisma.rolePackage.update({
