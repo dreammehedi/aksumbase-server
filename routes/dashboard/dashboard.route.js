@@ -51,6 +51,7 @@ DashboardRouter.get(
   "/admin/weekly-report",
   verifyToken,
   verifyAdminOld,
+  paginationMiddleware,
   getAdminWeeklyReportOverview
 );
 

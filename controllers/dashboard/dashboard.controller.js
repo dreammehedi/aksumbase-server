@@ -1,8 +1,6 @@
 import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
 
-import { Parser as Json2CsvParser } from "json2csv";
-
 // admin controller
 export const getAdminDashboardOverview = async (req, res, next) => {
   try {
@@ -152,71 +150,183 @@ export const getAdminAnalysisOverview = async (req, res, next) => {
   }
 };
 
+// export const getAdminWeeklyReportOverview = async (req, res, next) => {
+//   try {
+
+//     const sevenDaysAgo = new Date();
+//     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+//     // Weekly property listings
+//     const weeklyProperties = await prisma.property.findMany({
+//       where: {
+//         createdAt: {
+//           gte: sevenDaysAgo,
+//         },
+//       },
+//       orderBy: {
+//         createdAt: "desc",
+//       },
+//     });
+
+//     // Weekly agent_broker registrations
+//     const weeklyAgents = await prisma.user.findMany({
+//       where: {
+//         createdAt: {
+//           gte: sevenDaysAgo,
+//         },
+//         role: "agent_broker",
+//       },
+//       orderBy: {
+//         createdAt: "desc",
+//       },
+//     });
+
+//     // Weekly users registrations
+//     const weeklyUsers = await prisma.user.findMany({
+//       where: {
+//         createdAt: {
+//           gte: sevenDaysAgo,
+//         },
+//         role: "user",
+//       },
+//       orderBy: {
+//         createdAt: "desc",
+//       },
+//     });
+
+//     const { type } = req.query;
+
+//     if (type === "csv") {
+//       // Combine data for CSV download
+//       const data = [
+//         { section: "Weekly Property Listings" },
+//         ...weeklyProperties.map((item) => ({
+//           id: item.id,
+//           title: item.title,
+//           createdAt: item.createdAt,
+//           status: item.status || "",
+//         })),
+//         {},
+//         { section: "Weekly Agent/Broker Registrations" },
+//         ...weeklyAgents.map((user) => ({
+//           id: user.id,
+//           name: user.username,
+//           email: user.email,
+//           createdAt: user.createdAt,
+//         })),
+//         {},
+//         { section: "Weekly User Registrations" },
+//         ...weeklyUsers.map((user) => ({
+//           id: user.id,
+//           name: user.username,
+//           email: user.email,
+//           createdAt: user.createdAt,
+//         })),
+//       ];
+
+//       const json2csv = new Json2CsvParser();
+//       const csv = json2csv.parse(data);
+
+//       res.header("Content-Type", "text/csv");
+//       res.attachment("weekly-report.csv");
+//       return res.send(csv);
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         weeklyProperties,
+//         weeklyAgents,
+//         weeklyUsers,
+//       },
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
 export const getAdminWeeklyReportOverview = async (req, res, next) => {
   try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const { type } = req.query;
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Weekly property listings
-    const weeklyProperties = await prisma.property.findMany({
-      where: {
-        createdAt: {
-          gte: sevenDaysAgo,
+    // ──────── Property Listings ────────
+    const [weeklyProperties, totalProperties] = await Promise.all([
+      prisma.property.findMany({
+        where: {
+          createdAt: { gte: sevenDaysAgo },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    // Weekly agent_broker registrations
-    const weeklyAgents = await prisma.user.findMany({
-      where: {
-        createdAt: {
-          gte: sevenDaysAgo,
+        orderBy: { createdAt: "desc" },
+        skip: Number(skip),
+        take: Number(limit),
+      }),
+      prisma.property.count({
+        where: {
+          createdAt: { gte: sevenDaysAgo },
         },
-        role: "agent_broker",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+      }),
+    ]);
 
-    // Weekly users registrations
-    const weeklyUsers = await prisma.user.findMany({
-      where: {
-        createdAt: {
-          gte: sevenDaysAgo,
+    // ──────── Agent/Broker Registrations ────────
+    const [weeklyAgents, totalAgents] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+          role: "agent_broker",
         },
-        role: "user",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+        orderBy: { createdAt: "desc" },
+        skip: Number(skip),
+        take: Number(limit),
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+          role: "agent_broker",
+        },
+      }),
+    ]);
 
-    const { type } = req.query;
+    // ──────── User Registrations ────────
+    const [weeklyUsers, totalUsers] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+          role: "user",
+        },
+        orderBy: { createdAt: "desc" },
+        skip: Number(skip),
+        take: Number(limit),
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+          role: "user",
+        },
+      }),
+    ]);
 
+    // ──────── CSV Export ────────
     if (type === "csv") {
-      // Combine data for CSV download
-      const data = [
-        { section: "Weekly Property Listings" },
+      const { Parser } = await import("json2csv"); // dynamic import
+      const fields = ["id", "title", "name", "email", "createdAt", "status"];
+      const parser = new Parser({ fields, withBOM: true });
+
+      const csvData = [
         ...weeklyProperties.map((item) => ({
           id: item.id,
           title: item.title,
           createdAt: item.createdAt,
           status: item.status || "",
         })),
-        {},
-        { section: "Weekly Agent/Broker Registrations" },
         ...weeklyAgents.map((user) => ({
           id: user.id,
           name: user.username,
           email: user.email,
           createdAt: user.createdAt,
         })),
-        {},
-        { section: "Weekly User Registrations" },
         ...weeklyUsers.map((user) => ({
           id: user.id,
           name: user.username,
@@ -225,20 +335,29 @@ export const getAdminWeeklyReportOverview = async (req, res, next) => {
         })),
       ];
 
-      const json2csv = new Json2CsvParser();
-      const csv = json2csv.parse(data);
+      const csv = parser.parse(csvData);
 
       res.header("Content-Type", "text/csv");
       res.attachment("weekly-report.csv");
       return res.send(csv);
     }
 
+    // ──────── JSON Response ────────
     res.status(200).json({
       success: true,
       data: {
         weeklyProperties,
         weeklyAgents,
         weeklyUsers,
+      },
+      pagination: {
+        skip: Number(skip),
+        limit: Number(limit),
+        total: {
+          properties: totalProperties,
+          agents: totalAgents,
+          users: totalUsers,
+        },
       },
     });
   } catch (error) {
