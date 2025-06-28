@@ -1,5 +1,4 @@
 dotenv.config();
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import dotenv from "dotenv";
@@ -8,9 +7,9 @@ import nodemailer from "nodemailer";
 import speakeasy from "speakeasy";
 import decrypt from "../../helper/decrypt.js";
 import { sendEmail } from "../../helper/sendEmail.js";
+import prisma from "../../lib/prisma.js";
 import cloudinary from "../../utils/cloudinary.js";
 import { createError } from "../../utils/error.js";
-const prisma = new PrismaClient();
 
 export const registerUser = async (req, res) => {
   try {
@@ -241,7 +240,7 @@ export const deleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if logged-in user is super_admin
+    // Check super_admin permission
     if (req.role !== "super_admin") {
       return res.status(403).json({
         success: false,
@@ -249,7 +248,6 @@ export const deleteAdmin = async (req, res) => {
       });
     }
 
-    // Prevent super admin from deleting their own account
     if (req.user?.id === id) {
       return res.status(403).json({
         success: false,
@@ -257,9 +255,7 @@ export const deleteAdmin = async (req, res) => {
       });
     }
 
-    const targetUser = await prisma.user.findUnique({
-      where: { id },
-    });
+    const targetUser = await prisma.user.findUnique({ where: { id } });
 
     if (!targetUser) {
       return res.status(404).json({
@@ -268,7 +264,6 @@ export const deleteAdmin = async (req, res) => {
       });
     }
 
-    // Only allow deletion of admin accounts (not other super admins)
     if (!targetUser.isAdmin || targetUser.role === "super_admin") {
       return res.status(400).json({
         success: false,
@@ -276,33 +271,48 @@ export const deleteAdmin = async (req, res) => {
       });
     }
 
-    // Step 1: Delete dependent session records first
-    await prisma.session.deleteMany({
+    // ✅ Delete all related records
+    await prisma.notification.deleteMany({ where: { userId: id } });
+    await prisma.userRole.deleteMany({ where: { userId: id } });
+    await prisma.session.deleteMany({ where: { userId: id } });
+    await prisma.bookmark.deleteMany({ where: { userId: id } });
+    await prisma.propertyView.deleteMany({ where: { userId: id } });
+    await prisma.propertyTourRequest.deleteMany({ where: { userId: id } });
+    await prisma.propertyContactUserRequest.deleteMany({
+      where: { userId: id },
+    });
+    await prisma.transaction.deleteMany({ where: { userId: id } });
+
+    // ✅ Delete properties listed by this user
+    await prisma.property.deleteMany({ where: { userId: id } });
+
+    // ✅ Delete reviews by and for this user
+    await prisma.review.deleteMany({
       where: {
-        userId: id,
+        OR: [{ reviewerId: id }, { reviewedUserId: id }],
       },
     });
 
-    await prisma.user.delete({
-      where: { id },
-    });
+    // ✅ Finally, delete the user
+    await prisma.user.delete({ where: { id } });
 
+    // ✅ Notify by email
     await sendEmail({
       to: targetUser.email,
       subject: "Your Admin Account Has Been Deleted",
       html: `
-    <h2>Account Deleted</h2>
-    <p>Dear ${targetUser.username || "Admin"},</p>
-    <p>Your admin account for <strong>AksumBase</strong> has been deleted by a super admin.</p>
-    <p>If you believe this was a mistake, please contact system support.</p>
-    <br />
-    <p>Regards,<br/>AksumBase Team</p>
-  `,
+        <h2>Account Deleted</h2>
+        <p>Dear ${targetUser.username || "Admin"},</p>
+        <p>Your admin account for <strong>AksumBase</strong> has been deleted by a super admin.</p>
+        <p>If you believe this was a mistake, please contact system support.</p>
+        <br />
+        <p>Regards,<br/>AksumBase Team</p>
+      `,
     });
 
     res.status(200).json({
       success: true,
-      message: "Admin account deleted successfully.",
+      message: "Admin account and related data deleted successfully.",
     });
   } catch (error) {
     console.error("Delete Admin Error:", error);

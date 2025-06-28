@@ -1085,6 +1085,31 @@ export const getAllUserRoleApplications = async (req, res) => {
   }
 };
 
+export const getAdminRolePackage = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+
+    const data = await prisma.rolePackage.findMany({
+      skip: Number(skip),
+      take: Number(limit),
+      orderBy: { createdAt: "desc" },
+    });
+
+    const total = await prisma.rolePackage.count();
+
+    res.status(200).json({
+      success: true,
+      data,
+      pagination: { total, skip: Number(skip), limit: Number(limit) },
+    });
+  } catch (error) {
+    console.error("Get role package error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch role package" });
+  }
+};
+
 // user controller
 export const getUserRolePackagePurchase = async (req, res) => {
   const userId = req.userId;
@@ -1097,6 +1122,7 @@ export const getUserRolePackagePurchase = async (req, res) => {
     // Fetch in parallel
     const [allPackages, userRole] = await Promise.all([
       prisma.rolePackage.findMany({
+        where: { status: "active" },
         orderBy: { price: "asc" }, // Optional: sort packages by price or name
       }),
       prisma.userRole.findFirst({

@@ -6,6 +6,7 @@ import {
   deleteUserSessionDataAdmin,
   getAdminAnalysisOverview,
   getAdminDashboardOverview,
+  getAdminRolePackage,
   getAdminWeeklyReportOverview,
   getAllAdminsByAdmin,
   getAllProperty,
@@ -137,6 +138,14 @@ DashboardRouter.get(
   verifyAdminOld,
   paginationMiddleware,
   getAllUserRoleApplications
+);
+
+DashboardRouter.get(
+  "/admin/role-package",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getAdminRolePackage
 );
 
 // user route
