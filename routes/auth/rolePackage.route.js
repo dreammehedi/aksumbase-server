@@ -14,7 +14,7 @@ RolePackageRouter.post(
   "/role-package",
   verifyToken,
   verifyAdminOld,
-  upload.none(),
+  upload.single("image"),
   createRolePackage
 );
 
@@ -22,7 +22,7 @@ RolePackageRouter.put(
   "/role-package",
   verifyToken,
   verifyAdminOld,
-  upload.none(),
+  upload.single("image"),
   updateRolePackage
 );
 

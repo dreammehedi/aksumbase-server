@@ -1,3 +1,4 @@
+import { cloudinary } from "../../config/cloudinary.config.js";
 import prisma from "../../lib/prisma.js";
 const allowedRoles = [
   "homeowner_landlord",
@@ -22,6 +23,16 @@ export const createRolePackage = async (req, res) => {
         error: `Invalid roleName. Allowed values are: ${allowedRoles.join(
           ", "
         )}`,
+      });
+    }
+
+    // Upload images
+    const image = req.files?.image;
+
+    if (!image) {
+      return res.status(400).json({
+        success: false,
+        message: "Image are required",
       });
     }
 
@@ -72,6 +83,9 @@ export const createRolePackage = async (req, res) => {
         durationDays: parseInt(durationDays),
         features: featuresArray,
         roleName,
+        status: "active",
+        image: image.path,
+        imagePublicId: image.filename,
       },
     });
 
@@ -87,12 +101,20 @@ export const createRolePackage = async (req, res) => {
 
 export const updateRolePackage = async (req, res) => {
   try {
-    const { id, name, price, durationDays, features, roleName } = req.body;
+    const { id, name, price, durationDays, features, roleName, status } =
+      req.body;
 
-    if (!name || !price || !durationDays || !roleName || !features) {
+    if (
+      !name ||
+      !price ||
+      !durationDays ||
+      !roleName ||
+      !features ||
+      status === undefined
+    ) {
       return res.status(400).json({
         error:
-          "All fields (name, price, durationDays, features, roleName) are required.",
+          "All fields (name, price, durationDays, features, roleName, status) are required.",
       });
     }
 
@@ -104,16 +126,12 @@ export const updateRolePackage = async (req, res) => {
       });
     }
 
-    // Check if package exists
-    const existing = await prisma.rolePackage.findUnique({
-      where: { id },
-    });
+    const existing = await prisma.rolePackage.findUnique({ where: { id } });
 
     if (!existing) {
       return res.status(404).json({ error: "Role package not found." });
     }
 
-    // Check for duplicate price + durationDays on same roleName, excluding current one
     const duplicate = await prisma.rolePackage.findFirst({
       where: {
         id: { not: id },
@@ -147,15 +165,29 @@ export const updateRolePackage = async (req, res) => {
       return res.status(400).json({ error: "Invalid features format." });
     }
 
+    // ✅ Collect updated fields
+    const updatedFields = {
+      name: name.toLowerCase(),
+      price: parseFloat(price),
+      durationDays: parseInt(durationDays),
+      features: featuresArray,
+      roleName,
+      status,
+    };
+
+    // ✅ Handle image update
+    if (req.files?.image) {
+      if (existing.imagePublicId) {
+        await cloudinary.uploader.destroy(existing.imagePublicId);
+      }
+
+      updatedFields.image = req.files.image.path;
+      updatedFields.imagePublicId = req.files.image.filename;
+    }
+
     const updatedPackage = await prisma.rolePackage.update({
       where: { id },
-      data: {
-        name: name.toLowerCase(),
-        price: parseFloat(price),
-        durationDays: parseInt(durationDays),
-        features: featuresArray,
-        roleName,
-      },
+      data: updatedFields,
     });
 
     res.status(200).json({
