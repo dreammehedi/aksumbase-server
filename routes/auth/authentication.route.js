@@ -3,6 +3,7 @@ import passport from "../../config/passport.config.js";
 import { upload } from "../../config/upload.js";
 import {
   changePassword,
+  deleteAdmin,
   forgotPassword,
   getUserProfile,
   googleLogin,
@@ -29,6 +30,14 @@ AuthenticationRouter.post(
   verifyAdminOld,
   upload.none(),
   registerAdmin
+);
+
+AuthenticationRouter.delete(
+  "/admin-delete/:id",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  deleteAdmin
 );
 AuthenticationRouter.post("/login", upload.none(), loginUser);
 AuthenticationRouter.post("/setup-2fa", verifyToken, upload.none(), setup2FA);

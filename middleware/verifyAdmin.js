@@ -11,7 +11,7 @@ export const verifyAdminOld = async (req, res, next) => {
       select: { role: true },
     });
     // Check if user exists and is an admin
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
       return next(
         createError(403, "You are not authorized to access this resource")
       );

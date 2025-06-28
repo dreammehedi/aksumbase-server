@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import speakeasy from "speakeasy";
 import decrypt from "../../helper/decrypt.js";
+import { sendEmail } from "../../helper/sendEmail.js";
 import cloudinary from "../../utils/cloudinary.js";
 import { createError } from "../../utils/error.js";
 const prisma = new PrismaClient();
@@ -202,6 +203,17 @@ export const registerAdmin = async (req, res) => {
       where: { id: session.id },
       data: { token },
     });
+    await sendEmail({
+      to: newUser.email,
+      subject: "Your Admin Account Has Been Created",
+      html: `
+    <h2>Welcome to AksumBase!</h2>
+    <p>Your admin account has been successfully created.</p>
+    <p><strong>Email:</strong> ${newUser.email}</p>
+    <p><strong>Password:</strong> ${password}</p>
+    <p>Please keep this information secure and consider changing your password after first login.</p>
+  `,
+    });
 
     res.status(201).json({
       success: true,
@@ -222,6 +234,81 @@ export const registerAdmin = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || "An error occurred during registration.",
+    });
+  }
+};
+export const deleteAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if logged-in user is super_admin
+    if (req.role !== "super_admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only super admins can delete admin accounts.",
+      });
+    }
+
+    // Prevent super admin from deleting their own account
+    if (req.user?.id === id) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot delete your own super admin account.",
+      });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found.",
+      });
+    }
+
+    // Only allow deletion of admin accounts (not other super admins)
+    if (!targetUser.isAdmin || targetUser.role === "super_admin") {
+      return res.status(400).json({
+        success: false,
+        message: "You can only delete admin accounts, not super admins.",
+      });
+    }
+
+    // Step 1: Delete dependent session records first
+    await prisma.session.deleteMany({
+      where: {
+        userId: id,
+      },
+    });
+
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    await sendEmail({
+      to: targetUser.email,
+      subject: "Your Admin Account Has Been Deleted",
+      html: `
+    <h2>Account Deleted</h2>
+    <p>Dear ${targetUser.username || "Admin"},</p>
+    <p>Your admin account for <strong>AksumBase</strong> has been deleted by a super admin.</p>
+    <p>If you believe this was a mistake, please contact system support.</p>
+    <br />
+    <p>Regards,<br/>AksumBase Team</p>
+  `,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Admin account deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete Admin Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while deleting admin.",
     });
   }
 };
