@@ -193,10 +193,80 @@ export const createSellerResources = async (req, res) => {
     });
   }
 };
+// export const updateSellerResources = async (req, res) => {
+//   const { id } = req.params;
+//   const { title, description, itemContents } = req.body;
+//   // itemContents expected as array of strings for each item
+
+//   try {
+//     const existingResource = await prisma.sellerResources.findUnique({
+//       where: { id },
+//     });
+
+//     if (!existingResource) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Seller resource not found",
+//       });
+//     }
+
+//     // Handle main image update
+//     const newImage = req.files?.image?.[0];
+//     if (newImage && existingResource.imagePublicId) {
+//       // Delete old main image from Cloudinary
+//       await cloudinary.uploader.destroy(existingResource.imagePublicId);
+//     }
+
+//     // Handle item images update (multiple)
+//     const newItemImages = req.files?.itemImage || [];
+
+//     // Build updated items array:
+//     // - If itemContents is provided, update items accordingly
+//     // - If no new itemImages for an index, keep old image info
+//     const updatedItems =
+//       itemContents && Array.isArray(itemContents)
+//         ? itemContents.map((content, index) => {
+//             const oldItem = existingResource.items?.[index] || {};
+
+//             // If new image uploaded for this item, delete old one from Cloudinary
+//             if (newItemImages[index] && oldItem.itemImagePublicId) {
+//               cloudinary.uploader.destroy(oldItem.itemImagePublicId);
+//             }
+
+//             return {
+//               itemContent: content || oldItem.itemContent,
+//               itemImage: newItemImages[index]?.path || oldItem.itemImage,
+//               itemImagePublicId:
+//                 newItemImages[index]?.filename || oldItem.itemImagePublicId,
+//             };
+//           })
+//         : existingResource.items || [];
+
+//     // Update record
+//     const updatedResource = await prisma.sellerResources.update({
+//       where: { id },
+//       data: {
+//         title: title || existingResource.title,
+//         description: description || existingResource.description,
+//         image: newImage?.path || existingResource.image,
+//         imagePublicId: newImage?.filename || existingResource.imagePublicId,
+//         items: updatedItems,
+//       },
+//     });
+
+//     res.status(200).json({ success: true, data: updatedResource });
+//   } catch (error) {
+//     console.error("Update seller resource error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to update seller resource",
+//       error: error.message,
+//     });
+//   }
+// };
+
 export const updateSellerResources = async (req, res) => {
-  const { id } = req.params;
-  const { title, description, itemContents } = req.body;
-  // itemContents expected as array of strings for each item
+  const { title, description, itemContents, id } = req.body;
 
   try {
     const existingResource = await prisma.sellerResources.findUnique({
@@ -210,25 +280,30 @@ export const updateSellerResources = async (req, res) => {
       });
     }
 
+    // Parse description safely if it is a string
+    const parsedDescription =
+      typeof description === "string" ? JSON.parse(description) : description;
+
+    // Parse itemContents safely if it is a string
+    const parsedItemContents =
+      typeof itemContents === "string"
+        ? JSON.parse(itemContents)
+        : itemContents;
+
     // Handle main image update
     const newImage = req.files?.image?.[0];
     if (newImage && existingResource.imagePublicId) {
-      // Delete old main image from Cloudinary
       await cloudinary.uploader.destroy(existingResource.imagePublicId);
     }
 
-    // Handle item images update (multiple)
+    // Handle item images update
     const newItemImages = req.files?.itemImage || [];
 
-    // Build updated items array:
-    // - If itemContents is provided, update items accordingly
-    // - If no new itemImages for an index, keep old image info
     const updatedItems =
-      itemContents && Array.isArray(itemContents)
-        ? itemContents.map((content, index) => {
+      Array.isArray(parsedItemContents) && parsedItemContents.length > 0
+        ? parsedItemContents.map((content, index) => {
             const oldItem = existingResource.items?.[index] || {};
 
-            // If new image uploaded for this item, delete old one from Cloudinary
             if (newItemImages[index] && oldItem.itemImagePublicId) {
               cloudinary.uploader.destroy(oldItem.itemImagePublicId);
             }
@@ -242,12 +317,11 @@ export const updateSellerResources = async (req, res) => {
           })
         : existingResource.items || [];
 
-    // Update record
     const updatedResource = await prisma.sellerResources.update({
       where: { id },
       data: {
         title: title || existingResource.title,
-        description: description || existingResource.description,
+        description: parsedDescription || existingResource.description,
         image: newImage?.path || existingResource.image,
         imagePublicId: newImage?.filename || existingResource.imagePublicId,
         items: updatedItems,
