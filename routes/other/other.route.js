@@ -6,18 +6,24 @@ const OtherRouter = express.Router();
 
 import {
   getBuyingGuides,
+  getContactInformation,
   getMarketAnalysis,
   getMarketInsights,
   getPress,
   getPrivacyPolicy,
   getSellingTips,
+  getSiteConfiguration,
+  getSocialNetwork,
   getTermsOfUse,
   updateBuyingGuides,
+  updateContactInformation,
   updateMarketAnalysis,
   updateMarketInsights,
   updatePress,
   updatePrivacyPolicy,
   updateSellingTips,
+  updateSiteConfiguration,
+  updateSocialNetwork,
   updateTermsOfUse,
 } from "../../controllers/other/other.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -83,6 +89,36 @@ OtherRouter.put(
   verifyAdminOld,
   upload.none(),
   updatePress
+);
+
+OtherRouter.get("/contact-information", getContactInformation);
+OtherRouter.put(
+  "/contact-information",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  updateContactInformation
+);
+
+OtherRouter.get("/social-network", getSocialNetwork);
+OtherRouter.put(
+  "/social-network",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  updateSocialNetwork
+);
+
+OtherRouter.get("/site-configuration", getSiteConfiguration);
+OtherRouter.put(
+  "/site-configuration",
+  verifyToken,
+  verifyAdminOld,
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "favicon", maxCount: 1 },
+  ]),
+  updateSiteConfiguration
 );
 
 export default OtherRouter;

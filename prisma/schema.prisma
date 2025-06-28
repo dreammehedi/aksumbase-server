@@ -183,7 +183,7 @@ model HeroBanner {
   title         String
   description   String
   image         String
-  imagePublicId String? // <-- Add this line
+  imagePublicId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -314,9 +314,8 @@ model StripeConfiguration {
   updatedAt           DateTime @updatedAt
 }
 
-
 // Sell page related models
-model SellPageBanner{
+model SellPageBanner {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   title         String
   description   String
@@ -366,7 +365,8 @@ model DevelopmentPlatform {
 model Property {
   id           String  @id @default(auto()) @map("_id") @db.ObjectId
   title        String
-  slug         String  @unique // for SEO-friendly URLs
+  // slug         String  @unique // for SEO-friendly URLs
+  slug         String
   price        Float
   address      String?
   city         String?
@@ -380,9 +380,9 @@ model Property {
   type     PropertyType // buy, rent, sold
   property PropertyCategory // apartment, house, etc.
 
-  bedrooms    Int
-  bathrooms   Int
-  size        Int
+  bedrooms    Int?
+  bathrooms   Int?
+  size        Int?
   lotSize     Float?
   yearBuilt   Int?
   hoaFees     Int?
@@ -408,7 +408,7 @@ model Property {
   description String
 
   listingStatus ListingStatus? // optional if you want to use it separately
-  listingType   ListingType? // agent, fsbo, etc.
+  listingType   String
 
   userId     String  @db.ObjectId
   user       User    @relation(fields: [userId], references: [id])
@@ -418,7 +418,6 @@ model Property {
 
   status     PropertyStatus @default(pending)
   flagged    Boolean        @default(false)
-  aiFlagged  Boolean        @default(false)
   reportedBy String[]       @default([])
   flagReason String?
   flagStatus String?        @default("pending")
@@ -456,14 +455,6 @@ enum PropertyStatus {
   pending
   approved
   rejected
-}
-
-// listing type
-enum ListingType {
-  agent
-  fsbo
-  foreclosure
-  new_construction
 }
 
 // listing status
@@ -528,4 +519,81 @@ model PropertyContactUserRequest {
   createdAt  DateTime @default(now())
   user       User?    @relation(fields: [userId], references: [id])
   property   Property @relation(fields: [propertyId], references: [id])
+}
+
+// contact user
+model ContactUser {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+// get estimate
+model GetEstimate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String
+  createdAt DateTime @default(now())
+}
+
+// faqs
+model Faqs {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  question  String
+  slug      String   @unique // for SEO-friendly URLs
+  answer    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// contact information
+model ContactInformation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String
+  email2    String?
+  phone     String
+  phone2    String?
+  address   String
+  address2  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// social network
+model SocialNetwork {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  facebookLink   String?
+  twitterLink    String?
+  linkedinLink   String?
+  instagramLink  String?
+  youtubeLink    String?
+  dribbleLink    String?
+  whatsappNumber String?
+  telegramLink   String?
+  snapchatLink   String?
+  tiktokLink     String?
+  threadsLink    String?
+  pinterestLink  String?
+  redditLink     String?
+  githubLink     String?
+  websiteLink    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// site configuration
+model SiteConfiguration {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  shortDescription String
+  longDescription  String?
+  copyRights       String
+  logo             String
+  logoPublicId     String?
+  favicon          String
+  faviconPublicId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

@@ -23,7 +23,7 @@ export const sendEmail = async ({ to, subject, html }) => {
   });
 
   const mailOptions = {
-    from: `"FreshRole" <${emailConfig.emailUserName}>`,
+    from: `"AksumBase" <${emailConfig.emailUserName}>`,
     to,
     subject,
     html,

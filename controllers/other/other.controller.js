@@ -1,5 +1,7 @@
 // controllers/other/other.controller.js
 import { PrismaClient } from "@prisma/client";
+import { cloudinary } from "../../config/cloudinary.config.js";
+import isValidUrl from "../../helper/isValidUrl.js";
 const prisma = new PrismaClient();
 
 // GET /api/privacy-policy
@@ -292,6 +294,212 @@ export const updatePress = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update press",
+      error: error.message,
+    });
+  }
+};
+
+export const getContactInformation = async (req, res) => {
+  try {
+    const data = await prisma.contactInformation.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get contact information error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch contact information" });
+  }
+};
+
+export const updateContactInformation = async (req, res) => {
+  const { email, email2, phone, phone2, address, address2, id } = req.body;
+
+  try {
+    const existing = await prisma.contactInformation.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Contact information not found" });
+    }
+
+    const updated = await prisma.contactInformation.update({
+      where: { id },
+      data: { email, email2, phone, phone2, address, address2 },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update contact information error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update contact information",
+      error: error.message,
+    });
+  }
+};
+
+export const getSocialNetwork = async (req, res) => {
+  try {
+    const data = await prisma.socialNetwork.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get social network error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch social network" });
+  }
+};
+
+export const updateSocialNetwork = async (req, res) => {
+  const {
+    id,
+    facebookLink,
+    twitterLink,
+    linkedinLink,
+    instagramLink,
+    youtubeLink,
+    dribbleLink,
+    whatsappNumber,
+    telegramLink,
+    snapchatLink,
+    tiktokLink,
+    threadsLink,
+    pinterestLink,
+    redditLink,
+    githubLink,
+    websiteLink,
+  } = req.body;
+
+  const links = {
+    facebookLink,
+    twitterLink,
+    linkedinLink,
+    instagramLink,
+    youtubeLink,
+    dribbleLink,
+    telegramLink,
+    snapchatLink,
+    tiktokLink,
+    threadsLink,
+    pinterestLink,
+    redditLink,
+    githubLink,
+    websiteLink,
+  };
+
+  // Validate all provided URLs
+  for (const [key, value] of Object.entries(links)) {
+    if (!isValidUrl(value)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid URL format for: ${key}`,
+      });
+    }
+  }
+
+  try {
+    const existing = await prisma.socialNetwork.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Social network not found" });
+    }
+
+    const updated = await prisma.socialNetwork.update({
+      where: { id },
+      data: {
+        ...links,
+        whatsappNumber,
+      },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update social network error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update social network",
+      error: error.message,
+    });
+  }
+};
+
+export const getSiteConfiguration = async (req, res) => {
+  try {
+    const data = await prisma.siteConfiguration.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Get site configuration error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch site configuration" });
+  }
+};
+
+export const updateSiteConfiguration = async (req, res) => {
+  const { name, shortDescription, longDescription, copyRights, id } = req.body;
+
+  try {
+    const existing = await prisma.siteConfiguration.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Site configuration not found" });
+    }
+
+    const updatedFields = {
+      name,
+      shortDescription,
+      longDescription,
+      copyRights,
+    };
+
+    // ✅ Update logo if provided
+    if (req.files?.logo?.[0]) {
+      if (existing.logoPublicId) {
+        await cloudinary.uploader.destroy(existing.logoPublicId);
+      }
+
+      updatedFields.logo = req.files.logo[0].path;
+      updatedFields.logoPublicId = req.files.logo[0].filename;
+    }
+
+    // ✅ Update author favicon if provided
+    if (req.files?.favicon?.[0]) {
+      if (existing.faviconPublicId) {
+        await cloudinary.uploader.destroy(existing.faviconPublicId);
+      }
+
+      updatedFields.favicon = req.files.favicon[0].path;
+      updatedFields.faviconPublicId = req.files.favicon[0].filename;
+    }
+
+    const updated = await prisma.siteConfiguration.update({
+      where: { id },
+      data: updatedFields,
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update site configuration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update site configuration",
       error: error.message,
     });
   }

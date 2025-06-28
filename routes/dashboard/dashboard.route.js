@@ -2,8 +2,10 @@ import express from "express";
 import { upload } from "../../config/upload.js";
 import {
   adminRequestPropertyContactUser,
+  deleteMySession,
   deleteUserSessionDataAdmin,
   getAdminDashboardOverview,
+  getAllAdminsByAdmin,
   getAllProperty,
   getAllUserRoleApplications,
   getAllUsersByAdmin,
@@ -16,6 +18,7 @@ import {
   getUsersByRole,
   getUserSession,
   renewRolePurchaseIntent,
+  updateMultiplePropertyFlagged,
   updateMultiplePropertyStatus,
   userRequestPropertyContactUser,
   userRequestTour,
@@ -43,6 +46,14 @@ DashboardRouter.get(
 );
 
 DashboardRouter.get(
+  "/admin/all-admin",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getAllAdminsByAdmin
+);
+
+DashboardRouter.get(
   "/admin/all-users-session",
   verifyToken,
   verifyAdminOld,
@@ -56,6 +67,8 @@ DashboardRouter.delete(
   verifyAdminOld,
   deleteUserSessionDataAdmin
 );
+
+DashboardRouter.delete("/user/session/:id", verifyToken, deleteMySession);
 
 DashboardRouter.get(
   "/user/users-session",
@@ -76,8 +89,14 @@ DashboardRouter.put(
   "/admin/property/update-status",
   verifyToken,
   verifyAdminOld,
-  paginationMiddleware,
   updateMultiplePropertyStatus
+);
+
+DashboardRouter.put(
+  "/admin/property/update-flagged",
+  verifyToken,
+  verifyAdminOld,
+  updateMultiplePropertyFlagged
 );
 
 DashboardRouter.get(

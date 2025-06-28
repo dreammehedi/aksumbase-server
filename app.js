@@ -29,17 +29,20 @@ import HeroBannerRouter from "./routes/home/heroBanner.route.js";
 import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
 import MortageToolsRouter from "./routes/home/mortageTools.route.js";
 import BlogRouter from "./routes/other/blog.route.js";
+import ContactUserRouter from "./routes/other/contactUser.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
+import FaqsRouter from "./routes/other/faqs.route.js";
+import GetEstimateRouter from "./routes/other/getEstimate.route.js";
 import OtherRouter from "./routes/other/other.route.js";
+import SellBannerRouter from "./routes/other/sellerPageBanner.route.js";
 import SellerResourcesRouter from "./routes/other/sellerResources.route.js";
+import SellTypesRouter from "./routes/other/sellTypes.route.js";
 import StripeConfigurationRouter from "./routes/other/stripeConfiguration.route.js";
 import { default as PropertyRouter } from "./routes/property/property.route.js";
 import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js";
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
 import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
 import UserReviewRouter from "./routes/property/userReview.route.js";
-import SellBannerRouter from "./routes/other/sellerPageBanner.route.js";
-import SellTypesRouter from "./routes/other/sellTypes.route.js";
 
 // Configure environment variables
 dotenv.config();
@@ -192,6 +195,9 @@ app.use("/api", PropertyTourRequestRouter);
 app.use("/api", PropertyContactUserRequestRouter);
 app.use("/api", StripeConfigurationRouter);
 app.use("/api", UserReviewRouter);
+app.use("/api", ContactUserRouter);
+app.use("/api", GetEstimateRouter);
+app.use("/api", FaqsRouter);
 
 // Start cron job
 roleExpiryChecker();

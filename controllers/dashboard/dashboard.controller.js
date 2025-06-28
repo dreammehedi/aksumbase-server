@@ -182,6 +182,90 @@ export const getAllUsersByAdmin = async (req, res) => {
   }
 };
 
+export const getAllAdminsByAdmin = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const {
+      search = "",
+      email = null,
+      city = null,
+      state = null,
+      zipCode = null,
+      phone = null,
+      address = null,
+    } = req.query;
+
+    // Helper for partial match filter
+    const exactOrContains = (fieldValue) =>
+      fieldValue ? { contains: fieldValue, mode: "insensitive" } : undefined;
+
+    // Compose OR filter for search on multiple fields
+    const searchFilter = search
+      ? {
+          OR: [
+            { username: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { state: { contains: search, mode: "insensitive" } },
+            { zipCode: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {};
+
+    // Build the Prisma where filter
+    const where = {
+      AND: [
+        { role: "admin" },
+        email ? { email: exactOrContains(email) } : {},
+        city ? { city: exactOrContains(city) } : {},
+        state ? { state: exactOrContains(state) } : {},
+        zipCode ? { zipCode: exactOrContains(zipCode) } : {},
+        phone ? { phone: exactOrContains(phone) } : {},
+        address ? { address: exactOrContains(address) } : {},
+        searchFilter,
+      ],
+    };
+
+    // Query users
+    const data = await prisma.user.findMany({
+      where,
+      skip: Number(skip),
+      take: Number(limit),
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        phone: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    const total = await prisma.user.count({ where });
+
+    return res.status(200).json({
+      success: true,
+      data,
+      pagination: { total, skip: Number(skip), limit: Number(limit) },
+    });
+  } catch (error) {
+    console.error("Get all admins error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch all admins",
+    });
+  }
+};
+
 export const getAllUsersSessionByAdmin = async (req, res) => {
   try {
     const { skip = 0, limit = 10 } = req.pagination || {};
@@ -189,8 +273,8 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
     const email = req.query.email || "";
     const role = req.query.role || "";
     const isActiveRaw = req.query.isActive;
+    const currentSessionId = req.sessionId; // ✅ Decoded from token
 
-    // Convert isActive to a proper boolean if provided
     const isActive =
       isActiveRaw === "true"
         ? true
@@ -198,12 +282,8 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
         ? false
         : undefined;
 
-    console.log("Parsed isActive:", isActive);
-
-    // Build user filters
     const userWhere = {
       AND: [
-        // { NOT: { role: "admin" } },
         role ? { role } : {},
         email ? { email: { contains: email, mode: "insensitive" } } : {},
         search
@@ -217,14 +297,12 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
       ],
     };
 
-    // Build session filters
     const sessionWhere = {
       ...(typeof isActive !== "undefined" && { isActive }),
       user: userWhere,
     };
 
-    // 1. Fetch filtered & paginated sessions
-    const data = await prisma.session.findMany({
+    const sessions = await prisma.session.findMany({
       where: sessionWhere,
       skip: Number(skip),
       take: Number(limit),
@@ -243,13 +321,16 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
       },
     });
 
-    // 2. Count total
+    const sessionsWithCurrentFlag = sessions.map((session) => ({
+      ...session,
+      isCurrentUserSession: session.id === currentSessionId,
+    }));
+
     const total = await prisma.session.count({ where: sessionWhere });
 
-    // 3. Respond
     res.status(200).json({
       success: true,
-      data,
+      data: sessionsWithCurrentFlag,
       pagination: {
         total,
         skip: Number(skip),
@@ -265,57 +346,10 @@ export const getAllUsersSessionByAdmin = async (req, res) => {
   }
 };
 
-// export const getUserSession = async (req, res) => {
-//   try {
-//     const userId = req.userId;
-
-//     if (!userId) {
-//       return res
-//         .status(401)
-//         .json({ success: false, message: "Unauthorized access" });
-//     }
-
-//     const session = await prisma.session.findMany({
-//       where: {
-//         userId,
-//       },
-//       orderBy: { createdAt: "desc" }, // get latest session
-//       include: {
-//         user: {
-//           select: {
-//             id: true,
-//             username: true,
-//             email: true,
-//             role: true,
-//             status: true,
-//             createdAt: true,
-//           },
-//         },
-//       },
-//     });
-
-//     if (!session) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Session not found" });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       data: session,
-//     });
-//   } catch (error) {
-//     console.error("Get user session error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to fetch user session",
-//     });
-//   }
-// };
-
 export const getUserSession = async (req, res) => {
   try {
     const userId = req.userId;
+    const sessionId = req.sessionId; // Current session ID
     const { skip = 0, limit = 10 } = req.pagination || {};
 
     if (!userId) {
@@ -324,11 +358,9 @@ export const getUserSession = async (req, res) => {
         .json({ success: false, message: "Unauthorized access" });
     }
 
-    // 1. Fetch filtered & paginated sessions
-    const session = await prisma.session.findMany({
-      where: {
-        userId,
-      },
+    // Fetch all sessions (including current session) with pagination
+    const sessions = await prisma.session.findMany({
+      where: { userId },
       skip: Number(skip),
       take: Number(limit),
       orderBy: { createdAt: "desc" },
@@ -346,24 +378,23 @@ export const getUserSession = async (req, res) => {
       },
     });
 
-    // 2. Count total sessions
-    const total = await prisma.session.count({
-      where: {
-        userId,
-      },
-    });
+    const total = await prisma.session.count({ where: { userId } });
 
-    // 3. Check if sessions exist
-    if (!session || session.length === 0) {
+    if (!sessions || sessions.length === 0) {
       return res
         .status(404)
         .json({ success: false, message: "No sessions found" });
     }
 
-    // 4. Respond with paginated data
+    // Add isCurrentUserSession flag
+    const sessionsWithFlag = sessions.map((session) => ({
+      ...session,
+      isCurrentUserSession: session.id === sessionId,
+    }));
+
     res.status(200).json({
       success: true,
-      data: session,
+      data: sessionsWithFlag,
       pagination: {
         total,
         skip: Number(skip),
@@ -378,6 +409,7 @@ export const getUserSession = async (req, res) => {
     });
   }
 };
+
 export const deleteUserSessionDataAdmin = async (req, res) => {
   const { id } = req.params;
 
@@ -416,6 +448,60 @@ export const deleteUserSessionDataAdmin = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete user session",
+    });
+  }
+};
+
+export const deleteMySession = async (req, res) => {
+  const sessionId = req.params.id;
+  const userId = req.userId; // from JWT middleware
+
+  try {
+    // ✅ Validate sessionId format
+    if (!/^[0-9a-fA-F]{24}$/.test(sessionId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid session ID format." });
+    }
+
+    // ✅ Check if user exists in the User collection
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // ✅ Find the session by ID
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized or session not found.",
+      });
+    }
+
+    // ✅ Delete or deactivate the session
+    await prisma.session.delete({
+      where: { id: sessionId },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out from this device.",
+    });
+  } catch (error) {
+    console.error("❌ Error in deleteMySession:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while logging out session.",
     });
   }
 };
@@ -539,6 +625,60 @@ export const updateMultiplePropertyStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update property status",
+    });
+  }
+};
+
+export const updateMultiplePropertyFlagged = async (req, res) => {
+  try {
+    const { ids = [], flagged, reportedBy, flagReason } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Property IDs are required.",
+      });
+    }
+
+    if (
+      !Array.isArray(reportedBy) ||
+      reportedBy.length === 0 ||
+      typeof flagReason !== "string" ||
+      flagReason.trim() === "" ||
+      typeof flagged !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Reported by, Flag Reason, and Flagged status are required and must be valid.",
+      });
+    }
+
+    // Prepare data to update (only include fields that are defined)
+    const updateData = {
+      flagStatus: flagged ? "approved" : "pending",
+    };
+
+    if (typeof flagged === "boolean") updateData.flagged = flagged;
+    if (Array.isArray(reportedBy)) updateData.reportedBy = reportedBy;
+    if (typeof flagReason === "string") updateData.flagReason = flagReason;
+    updateData.flaggedAt = new Date();
+
+    const updated = await prisma.property.updateMany({
+      where: { id: { in: ids } },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${updated.count} properties updated.`,
+      data: updateData,
+    });
+  } catch (error) {
+    console.error("Update property flagged status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update property flagged status",
     });
   }
 };
@@ -804,6 +944,7 @@ export const getUserRolePackagePurchase = async (req, res) => {
               durationDays: true,
               price: true,
               roleName: true,
+              features: true,
             },
           },
           transactions: {

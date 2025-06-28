@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 export const getProperty = async (req, res) => {
   try {
     const data = await prisma.property.findMany({
-      where: { status: "approved" },
+      where: { status: "approved", flagged: false },
       orderBy: { createdAt: "desc" },
     });
     res.status(200).json({ success: true, data });
@@ -109,12 +109,10 @@ export const createProperty = async (req, res) => {
       bus,
       restaurant,
       description,
-      listingStatus,
-      listingType,
     } = req.body;
 
     const userId = req.userId;
-
+    console.log(req.body);
     if (!userId)
       return res.status(400).json({ message: "User ID not found from token." });
 
@@ -143,6 +141,8 @@ export const createProperty = async (req, res) => {
         message: "User not found.",
       });
     }
+
+    console.log(user.role);
     // Parse amenities if it comes as a JSON string
     let amenitiesArray = [];
     try {
@@ -169,6 +169,19 @@ export const createProperty = async (req, res) => {
         publicId: file.filename,
       }))
     );
+
+    const existingProperty = await prisma.property.findFirst({
+      where: {
+        OR: [
+          { slug },
+          {
+            latitude: latitude,
+            longitude: longitude,
+          },
+        ],
+      },
+    });
+
     const newProperty = await prisma.property.create({
       data: {
         title,
@@ -205,14 +218,24 @@ export const createProperty = async (req, res) => {
         bus,
         restaurant,
         description,
-        listingStatus,
-        listingType,
+        listingStatus: "active",
+        listingType: user?.role,
         userId,
-        status: user?.role === "agent" ? "approved" : "pending",
+        status:
+          user?.role === "agent_broker" || user?.role === "property_manager"
+            ? "approved"
+            : "pending",
         userName: user?.username,
         userAvatar: user?.image,
         userEmail: user?.email,
         images: uploadedImages,
+        flagStatus: existingProperty ? "approved" : "pending",
+        flagged: existingProperty ? true : false,
+        flagReason: existingProperty
+          ? "Property data already exist. Duplicate property not allow!"
+          : "",
+        flaggedAt: existingProperty ? new Date() : null,
+        reportedBy: existingProperty ? ["Reported by data created time."] : [],
       },
     });
 
@@ -265,7 +288,6 @@ export const updateProperty = async (req, res) => {
       restaurant,
       description,
       listingStatus,
-      listingType,
     } = req.body;
 
     const userId = req.userId;
@@ -364,7 +386,6 @@ export const updateProperty = async (req, res) => {
         restaurant,
         description,
         listingStatus,
-        listingType,
         images: uploadedImages,
       },
     });
@@ -436,10 +457,12 @@ export const getPropertyBySlug = async (req, res) => {
   }
 
   try {
-    const property = await prisma.property.findUnique({
-      where: { slug },
+    const property = await prisma.property.findFirst({
+      where: {
+        slug: slug,
+        status: "approved",
+      },
     });
-
     if (!property) {
       return res
         .status(404)
@@ -447,9 +470,11 @@ export const getPropertyBySlug = async (req, res) => {
     }
 
     await prisma.property.update({
-      where: { slug, status: "approved" },
+      where: { id: property.id },
       data: {
-        views: { increment: 1 },
+        views: {
+          increment: 1,
+        },
       },
     });
 
@@ -479,6 +504,7 @@ export const getPropertyBySlug = async (req, res) => {
         state: property?.state || "",
         type: property?.type || "",
         status: "approved",
+        flagged: false,
       },
       take: 20,
       orderBy: { createdAt: "desc" },
@@ -615,7 +641,8 @@ export const property = async (req, res) => {
 
     const where = {
       AND: [
-        { status: { equals: "approved" } },
+        { status: "approved", flagged: false },
+
         {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
