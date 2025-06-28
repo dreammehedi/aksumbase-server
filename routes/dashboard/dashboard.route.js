@@ -6,6 +6,7 @@ import {
   deleteUserSessionDataAdmin,
   getAdminAnalysisOverview,
   getAdminDashboardOverview,
+  getAdminWeeklyReportOverview,
   getAllAdminsByAdmin,
   getAllProperty,
   getAllUserRoleApplications,
@@ -43,6 +44,13 @@ DashboardRouter.get(
   verifyToken,
   verifyAdminOld,
   getAdminAnalysisOverview
+);
+
+DashboardRouter.get(
+  "/admin/weekly-report",
+  verifyToken,
+  verifyAdminOld,
+  getAdminWeeklyReportOverview
 );
 
 DashboardRouter.get(

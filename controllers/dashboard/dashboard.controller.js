@@ -1,6 +1,8 @@
 import stripeConfig from "../../config/stripe.config.js";
 import prisma from "../../lib/prisma.js";
 
+import { Parser as Json2CsvParser } from "json2csv";
+
 // admin controller
 export const getAdminDashboardOverview = async (req, res, next) => {
   try {
@@ -143,6 +145,100 @@ export const getAdminAnalysisOverview = async (req, res, next) => {
         totalContactUser,
         totalGetEstimate,
         totalFaqs,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAdminWeeklyReportOverview = async (req, res, next) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // Weekly property listings
+    const weeklyProperties = await prisma.property.findMany({
+      where: {
+        createdAt: {
+          gte: sevenDaysAgo,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Weekly agent_broker registrations
+    const weeklyAgents = await prisma.user.findMany({
+      where: {
+        createdAt: {
+          gte: sevenDaysAgo,
+        },
+        role: "agent_broker",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Weekly users registrations
+    const weeklyUsers = await prisma.user.findMany({
+      where: {
+        createdAt: {
+          gte: sevenDaysAgo,
+        },
+        role: "user",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const { type } = req.query;
+
+    if (type === "csv") {
+      // Combine data for CSV download
+      const data = [
+        { section: "Weekly Property Listings" },
+        ...weeklyProperties.map((item) => ({
+          id: item.id,
+          title: item.title,
+          createdAt: item.createdAt,
+          status: item.status || "",
+        })),
+        {},
+        { section: "Weekly Agent/Broker Registrations" },
+        ...weeklyAgents.map((user) => ({
+          id: user.id,
+          name: user.username,
+          email: user.email,
+          createdAt: user.createdAt,
+        })),
+        {},
+        { section: "Weekly User Registrations" },
+        ...weeklyUsers.map((user) => ({
+          id: user.id,
+          name: user.username,
+          email: user.email,
+          createdAt: user.createdAt,
+        })),
+      ];
+
+      const json2csv = new Json2CsvParser();
+      const csv = json2csv.parse(data);
+
+      res.header("Content-Type", "text/csv");
+      res.attachment("weekly-report.csv");
+      return res.send(csv);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        weeklyProperties,
+        weeklyAgents,
+        weeklyUsers,
       },
     });
   } catch (error) {
