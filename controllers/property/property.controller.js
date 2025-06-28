@@ -26,26 +26,33 @@ export const searchProperty = async (req, res) => {
     const search = (req.query.search || "").toLowerCase();
     const { type } = req.query;
 
-    const where = {
-      AND: [
-        type ? { type: { equals: type } } : {}, // match type exactly (e.g. "buy" or "rent")
+    const andConditions = [{ status: "approved", flagged: false }];
 
-        search
-          ? {
-              OR: [
-                { city: { contains: search, mode: "insensitive" } },
-                { address: { contains: search, mode: "insensitive" } },
-                { zip: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {},
-      ],
+    if (type) {
+      andConditions.push({ type: { equals: type } });
+    }
+
+    if (search) {
+      andConditions.push({
+        OR: [
+          { city: { contains: search, mode: "insensitive" } },
+          { address: { contains: search, mode: "insensitive" } },
+          { zip: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    const where = {
+      AND: andConditions,
     };
+
+    const safeSkip = Number.isFinite(Number(skip)) ? Number(skip) : 0;
+    const safeLimit = Number.isFinite(Number(limit)) ? Number(limit) : 10;
 
     const data = await prisma.property.findMany({
       where,
-      skip: Number(skip),
-      take: Number(limit),
+      skip: safeSkip,
+      take: safeLimit,
       orderBy: { createdAt: "desc" },
       select: {
         zip: true,
@@ -61,15 +68,17 @@ export const searchProperty = async (req, res) => {
       data,
       pagination: {
         total,
-        skip: Number(skip),
-        limit: Number(limit),
+        skip: safeSkip,
+        limit: safeLimit,
       },
     });
   } catch (error) {
     console.error("Get property error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch properties", error });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch properties",
+      error,
+    });
   }
 };
 
