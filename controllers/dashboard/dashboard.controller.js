@@ -701,6 +701,7 @@ export const getAllProperty = async (req, res) => {
       listingType,
       listingStatus,
       amenities,
+      isFlagged,
     } = req.query;
 
     const where = {
@@ -728,6 +729,7 @@ export const getAllProperty = async (req, res) => {
         furnished !== undefined ? { furnished: furnished === "true" } : {},
         garage !== undefined ? { garage: garage === "true" } : {},
         pool !== undefined ? { pool: pool === "true" } : {},
+        isFlagged !== undefined ? { flagged: isFlagged === "true" } : {},
         // amenities filter (matches any of the provided amenities)
         amenities
           ? {
