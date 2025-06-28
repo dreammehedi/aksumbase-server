@@ -1973,6 +1973,7 @@ export const getUserStatisticsOverview = async (req, res) => {
           where: {
             userId,
             isSold: true,
+            type: "buy",
           },
           select: {
             soldPrice: true,
