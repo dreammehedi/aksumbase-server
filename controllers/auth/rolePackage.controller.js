@@ -27,7 +27,7 @@ export const createRolePackage = async (req, res) => {
     }
 
     // Upload images
-    const image = req.files?.image;
+    const image = req.file;
 
     if (!image) {
       return res.status(400).json({
