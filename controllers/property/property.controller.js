@@ -463,28 +463,118 @@ export const deleteProperty = async (req, res) => {
   }
 };
 
+// export const getPropertyBySlug = async (req, res) => {
+//   const { slug } = req.params;
+
+//   let userId;
+//   let role;
+//   const token = req.headers.authorization?.split(" ")[1];
+
+//   if (token) {
+//     try {
+//       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//       userId = decoded.userId;
+//       role = decoded.role;
+//     } catch (err) {
+//       console.warn("Invalid or expired token:", err.message);
+//     }
+//   }
+
+//   try {
+//     const property = await prisma.property.findFirst({
+//       where: {
+//         slug: slug,
+//         status: "approved",
+//       },
+//     });
+//     if (!property) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Property not found" });
+//     }
+
+//     await prisma.property.update({
+//       where: { id: property.id },
+//       data: {
+//         views: {
+//           increment: 1,
+//         },
+//       },
+//     });
+
+//     if (userId) {
+//       try {
+//         await prisma.propertyView.create({
+//           data: {
+//             userId,
+//             propertyId: property.id,
+//           },
+//         });
+//       } catch (err) {
+//         if (
+//           err.code !== "P2002" ||
+//           !err.meta?.target?.includes("userId_propertyId")
+//         ) {
+//           console.error("Property view tracking failed:", err);
+//         }
+//       }
+//     }
+
+//     const relevantProperties = await prisma.property.findMany({
+//       where: {
+//         id: { not: property.id },
+//         address: property?.address || "",
+//         city: property?.city || "",
+//         state: property?.state || "",
+//         type: property?.type || "",
+//         status: "approved",
+//         flagged: false,
+//       },
+//       take: 20,
+//       orderBy: { createdAt: "desc" },
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         property,
+//         relevantProperties,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Get property by slug error:", error);
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to fetch property" });
+//   }
+// };
+
 export const getPropertyBySlug = async (req, res) => {
   const { slug } = req.params;
 
   let userId;
+  let role;
   const token = req.headers.authorization?.split(" ")[1];
 
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       userId = decoded.userId;
+      role = decoded.role;
     } catch (err) {
       console.warn("Invalid or expired token:", err.message);
     }
   }
 
   try {
+    // Conditionally filter by status only if role is NOT agent_broker
     const property = await prisma.property.findFirst({
       where: {
         slug: slug,
-        status: "approved",
+        ...(role !== "agent_broker" && { status: "approved" }),
       },
     });
+
     if (!property) {
       return res
         .status(404)
@@ -525,7 +615,7 @@ export const getPropertyBySlug = async (req, res) => {
         city: property?.city || "",
         state: property?.state || "",
         type: property?.type || "",
-        status: "approved",
+        ...(role !== "agent_broker" && { status: "approved" }),
         flagged: false,
       },
       take: 20,
