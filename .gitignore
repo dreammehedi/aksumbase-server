@@ -1,16 +1,2 @@
-node_modules/
+node_modules
 .env
-.env.*.local
-logs/
-*.log
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-dist/
-build/
-coverage/
-pids/
-*.pid
-*.seed
-*.pid.lock
