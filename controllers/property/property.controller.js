@@ -330,23 +330,36 @@ export const updateProperty = async (req, res) => {
     }
 
     // ✅ Delete old images if new ones provided
-    if (req.files?.length) {
-      const oldImages = existingProperty.images || [];
-      await Promise.all(
-        oldImages.map((img) =>
-          img.publicId ? cloudinary.uploader.destroy(img.publicId) : null
-        )
-      );
-    }
+    // if (req.files?.length) {
+    //   const oldImages = existingProperty.images || [];
+    //   await Promise.all(
+    //     oldImages.map((img) =>
+    //       img.publicId ? cloudinary.uploader.destroy(img.publicId) : null
+    //     )
+    //   );
+    // }
 
-    const uploadedImages = req.files?.length
-      ? await Promise.all(
-          req.files.map((file) => ({
-            url: file.path,
-            publicId: file.filename,
-          }))
-        )
-      : existingProperty.images;
+    // const uploadedImages = req.files?.length
+    //   ? await Promise.all(
+    //       req.files.map((file) => ({
+    //         url: file.path,
+    //         publicId: file.filename,
+    //       }))
+    //     )
+    //   : existingProperty.images;
+
+    // ✅ Combine old images with newly uploaded ones (if any)
+    const newImages =
+      req.files?.length > 0
+        ? await Promise.all(
+            req.files.map((file) => ({
+              url: file.path,
+              publicId: file.filename,
+            }))
+          )
+        : [];
+
+    const uploadedImages = [...(existingProperty.images || []), ...newImages];
 
     const updatedProperty = await prisma.property.update({
       where: { id },
