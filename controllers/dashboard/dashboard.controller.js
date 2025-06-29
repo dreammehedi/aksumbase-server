@@ -2082,9 +2082,9 @@ export const updatePropertySoldStatus = async (req, res, next) => {
     // 6. Build update data
     const updateData = {
       isSold,
-      soldPrice: isSold ? soldPrice ?? null : null,
-      soldAt: isSold ? new Date(soldAt) ?? new Date() : null,
-      soldFeedback: isSold ? soldFeedback ?? null : null,
+      soldPrice: soldPrice,
+      soldAt: new Date(),
+      soldFeedback: soldFeedback,
     };
 
     // 7. Update property
