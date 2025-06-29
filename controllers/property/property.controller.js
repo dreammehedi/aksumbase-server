@@ -473,7 +473,6 @@ export const getPropertyBySlug = async (req, res) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       userId = decoded.userId;
-      role = decoded.role;
     } catch (err) {
       console.warn("Invalid or expired token:", err.message);
     }
