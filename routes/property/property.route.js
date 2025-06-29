@@ -4,6 +4,7 @@ import {
   createProperty,
   deleteProperty,
   getProperty,
+  getPropertyById,
   getPropertyBySlug,
   getRecentPropertyViews,
   property,
@@ -43,6 +44,7 @@ PropertyRouter.delete(
 );
 
 PropertyRouter.get("/property-details/:slug", getPropertyBySlug);
+PropertyRouter.get("/property-details/:id", getPropertyById);
 
 PropertyRouter.post(
   "/property/track-view",

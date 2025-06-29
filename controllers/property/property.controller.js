@@ -467,7 +467,6 @@ export const getPropertyBySlug = async (req, res) => {
   const { slug } = req.params;
 
   let userId;
-  let role;
   const token = req.headers.authorization?.split(" ")[1];
 
   if (token) {
@@ -484,7 +483,6 @@ export const getPropertyBySlug = async (req, res) => {
     const property = await prisma.property.findFirst({
       where: {
         slug: slug,
-        status: "approved",
       },
     });
     if (!property) {
@@ -546,6 +544,39 @@ export const getPropertyBySlug = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch property" });
+  }
+};
+
+export const getPropertyById = async (req, res) => {
+  const { id } = req.params;
+
+  // Validate ID format if you're using MongoDB ObjectId
+  if (!id || id.length !== 24) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid property ID." });
+  }
+
+  try {
+    const property = await prisma.property.findUnique({
+      where: { id },
+    });
+
+    if (!property) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Property not found." });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { property },
+    });
+  } catch (error) {
+    console.error("Get property by ID error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch property." });
   }
 };
 
