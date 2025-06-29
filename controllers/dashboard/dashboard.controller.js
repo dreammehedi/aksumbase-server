@@ -2082,7 +2082,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
     // 6. Build update data
     const updateData = {
       isSold,
-      soldPrice: soldPrice,
+      soldPrice: parseInt(soldPrice),
       soldAt: new Date(),
       soldFeedback: soldFeedback,
     };
