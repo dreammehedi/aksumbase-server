@@ -2072,10 +2072,10 @@ export const updatePropertySoldStatus = async (req, res, next) => {
     }
 
     // 5. Validate property status
-    if (property.status !== "active") {
+    if (property.status !== "approved") {
       return res.status(400).json({
         success: false,
-        message: "Only active properties can be marked as sold.",
+        message: "Only approved properties can be marked as sold.",
       });
     }
 
