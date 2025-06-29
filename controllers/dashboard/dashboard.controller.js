@@ -2020,9 +2020,9 @@ export const getUserStatisticsOverview = async (req, res) => {
 
 export const updatePropertySoldStatus = async (req, res, next) => {
   try {
-    const { id, isSold, soldPrice, soldAt, soldFeedback } = req.body;
+    const { id, soldPrice, soldAt, soldFeedback } = req.body;
     const userId = req.userId;
-
+    const isSold = true;
     // 1. Check if ID is provided
     if (!id) {
       return res.status(400).json({
@@ -2032,12 +2032,12 @@ export const updatePropertySoldStatus = async (req, res, next) => {
     }
 
     // 2. Validate isSold
-    if (typeof isSold !== "boolean") {
-      return res.status(400).json({
-        success: false,
-        message: "isSold must be a boolean (true/false).",
-      });
-    }
+    // if (typeof isSold !== "boolean") {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "isSold must be a boolean (true/false).",
+    //   });
+    // }
 
     // 3. Check if user exists
     const user = await prisma.user.findUnique({
