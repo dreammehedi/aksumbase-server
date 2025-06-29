@@ -1327,6 +1327,7 @@ export const getPropertyByUser = async (req, res) => {
       listingType,
       listingStatus,
       amenities,
+      isSold,
     } = req.query;
 
     const where = {
@@ -1355,6 +1356,7 @@ export const getPropertyByUser = async (req, res) => {
         furnished !== undefined ? { furnished: furnished === "true" } : {},
         garage !== undefined ? { garage: garage === "true" } : {},
         pool !== undefined ? { pool: pool === "true" } : {},
+        isSold !== undefined ? { isSold: isSold === "true" } : {},
         amenities
           ? {
               amenities: {
