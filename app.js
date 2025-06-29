@@ -43,6 +43,7 @@ import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js"
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
 import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
 import UserReviewRouter from "./routes/property/userReview.route.js";
+import NewsletterRouter from "./routes/other/newsletter.routes.js";
 
 // Configure environment variables
 dotenv.config();
@@ -198,6 +199,7 @@ app.use("/api", UserReviewRouter);
 app.use("/api", ContactUserRouter);
 app.use("/api", GetEstimateRouter);
 app.use("/api", FaqsRouter);
+app.use("/api", NewsletterRouter);
 
 // Start cron job
 roleExpiryChecker();
