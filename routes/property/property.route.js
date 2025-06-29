@@ -44,7 +44,7 @@ PropertyRouter.delete(
 );
 
 PropertyRouter.get("/property-details/:slug", getPropertyBySlug);
-PropertyRouter.get("/property-details/:id", getPropertyById);
+PropertyRouter.get("/property-details-id/:id", getPropertyById);
 
 PropertyRouter.post(
   "/property/track-view",
