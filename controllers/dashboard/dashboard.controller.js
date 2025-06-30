@@ -2022,9 +2022,10 @@ export const getUserStatisticsOverview = async (req, res) => {
 
 export const updatePropertySoldStatus = async (req, res, next) => {
   try {
-    const { id, soldPrice, soldAt, soldFeedback } = req.body;
+    const { id, soldPrice, soldFeedback } = req.body;
     const userId = req.userId;
     const isSold = true;
+
     // 1. Check if ID is provided
     if (!id) {
       return res.status(400).json({
@@ -2033,15 +2034,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 2. Validate isSold
-    // if (typeof isSold !== "boolean") {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "isSold must be a boolean (true/false).",
-    //   });
-    // }
-
-    // 3. Check if user exists
+    // 2. Check if user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -2053,7 +2046,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 4. Check if property exists and belongs to the user (optional: enforce ownership)
+    // 3. Check if property exists
     const property = await prisma.property.findUnique({
       where: { id },
     });
@@ -2065,7 +2058,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // Optional: Check if property belongs to the user
+    // 4. Check if property belongs to the user
     if (property.userId !== userId) {
       return res.status(403).json({
         success: false,
@@ -2073,7 +2066,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 5. Validate property status
+    // 5. Check if property is approved
     if (property.status !== "approved") {
       return res.status(400).json({
         success: false,
@@ -2081,15 +2074,23 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 6. Build update data
+    // 6. Ensure only 'buy' type properties can be sold
+    if (property.propertyType !== "buy") {
+      return res.status(400).json({
+        success: false,
+        message: "Only properties listed for 'buy' can be marked as sold.",
+      });
+    }
+
+    // 7. Build update data
     const updateData = {
       isSold,
       soldPrice: parseInt(soldPrice),
       soldAt: new Date(),
-      soldFeedback: soldFeedback,
+      soldFeedback,
     };
 
-    // 7. Update property
+    // 8. Update property
     const updatedProperty = await prisma.property.update({
       where: { id },
       data: updateData,
@@ -2097,7 +2098,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: `Property marked as ${isSold ? "sold" : "unsold"}.`,
+      message: `Property marked as sold.`,
       data: updatedProperty,
     });
   } catch (error) {
