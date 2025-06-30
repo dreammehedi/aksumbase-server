@@ -425,14 +425,26 @@ export const updateProperty = async (req, res) => {
 
 export const deleteProperty = async (req, res) => {
   const { id } = req.params;
-
   const userId = req.userId;
 
-  if (!userId)
+  console.log("Property ID param:", id);
+
+  if (!userId) {
     return res.status(400).json({ message: "User ID not found from token." });
+  }
+
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Property ID is missing from URL params.",
+    });
+  }
 
   try {
-    const property = await prisma.property.findUnique({ where: { id } });
+    // Find the property
+    const property = await prisma.property.findUnique({
+      where: { id: id },
+    });
 
     if (!property) {
       return res
@@ -440,7 +452,14 @@ export const deleteProperty = async (req, res) => {
         .json({ success: false, message: "Property not found" });
     }
 
-    // Delete all images from Cloudinary
+    // Delete all related PropertyView records
+    await prisma.propertyView.deleteMany({
+      where: {
+        propertyId: id,
+      },
+    });
+
+    // Delete images from Cloudinary
     if (Array.isArray(property.images)) {
       for (const image of property.images) {
         if (image?.publicId) {
@@ -449,16 +468,22 @@ export const deleteProperty = async (req, res) => {
       }
     }
 
-    // Delete property from DB
-    await prisma.property.delete({ where: { id } });
+    // Delete property
+    await prisma.property.delete({
+      where: { id: id },
+    });
 
-    res.status(200).json({ success: true, message: "Deleted successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Deleted successfully",
+    });
   } catch (error) {
     console.error("Delete property error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete property",
       error: error.message,
+      data: id,
     });
   }
 };
