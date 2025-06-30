@@ -330,6 +330,7 @@ export const userRequestTour = async (req, res) => {
         message: true,
         tourTimes: true,
         propertyId: true,
+        status: true,
         createdAt: true,
         property: {
           select: {
