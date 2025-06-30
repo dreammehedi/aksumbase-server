@@ -513,18 +513,26 @@ model PropertyView {
 
 // property tour request
 model PropertyTourRequest {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String   @db.ObjectId
-  propertyId String   @db.ObjectId
+  id         String                    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String                    @db.ObjectId
+  propertyId String                    @db.ObjectId
   name       String
   email      String
   phone      String
   message    String?
   tourTimes  Json // Array of tour objects: [{ date, time }]
-  createdAt  DateTime @default(now())
+  status     PropertyTourRequestStatus @default(pending)
+  createdAt  DateTime                  @default(now())
 
   user     User?    @relation(fields: [userId], references: [id])
   property Property @relation(fields: [propertyId], references: [id])
+}
+
+// property tour request status
+enum PropertyTourRequestStatus {
+  pending
+  approved
+  rejected
 }
 
 // property contact user request

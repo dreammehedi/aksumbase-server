@@ -24,6 +24,7 @@ import {
   renewRolePurchaseIntent,
   updateMultiplePropertyFlagged,
   updateMultiplePropertyStatus,
+  updateMultiplePropertyTourStatus,
   updatePropertyRentStatus,
   updatePropertySoldStatus,
   userRequestPropertyContactUser,
@@ -111,6 +112,12 @@ DashboardRouter.put(
   verifyToken,
   verifyAdminOld,
   updateMultiplePropertyStatus
+);
+
+DashboardRouter.put(
+  "/user/property/update-tour-status",
+  verifyToken,
+  updateMultiplePropertyTourStatus
 );
 
 DashboardRouter.put(

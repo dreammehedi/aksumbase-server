@@ -459,6 +459,23 @@ export const deleteProperty = async (req, res) => {
       },
     });
 
+    await prisma.bookmark.deleteMany({
+      where: {
+        propertyId: id,
+      },
+    });
+
+    await prisma.propertyTourRequest.deleteMany({
+      where: {
+        propertyId: id,
+      },
+    });
+
+    await prisma.propertyContactUserRequest.deleteMany({
+      where: {
+        propertyId: id,
+      },
+    });
     // Delete images from Cloudinary
     if (Array.isArray(property.images)) {
       for (const image of property.images) {
