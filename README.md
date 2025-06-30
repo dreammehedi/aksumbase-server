@@ -1,1 +1,1 @@
-Aksumbase Server Website
+Aksumbase Server
