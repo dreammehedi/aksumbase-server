@@ -33,6 +33,7 @@ import ContactUserRouter from "./routes/other/contactUser.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
 import FaqsRouter from "./routes/other/faqs.route.js";
 import GetEstimateRouter from "./routes/other/getEstimate.route.js";
+import NewsletterRouter from "./routes/other/newsletter.routes.js";
 import OtherRouter from "./routes/other/other.route.js";
 import SellBannerRouter from "./routes/other/sellerPageBanner.route.js";
 import SellerResourcesRouter from "./routes/other/sellerResources.route.js";
@@ -43,7 +44,6 @@ import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js"
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
 import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
 import UserReviewRouter from "./routes/property/userReview.route.js";
-import NewsletterRouter from "./routes/other/newsletter.routes.js";
 
 // Configure environment variables
 dotenv.config();
@@ -100,9 +100,11 @@ app.use(cookieParser());
 
 // CORS configuration
 const allowedOrigins = [
-  "http://localhost:5173", // Development
-  "https://aksumbase.com", // Production
-  "https://www.aksumbase.com", // Production with www
+  "http://localhost:5173",
+  "https://aksumbase.com",
+  "http://aksumbase.com",
+  "https://www.aksumbase.com",
+  "http://www.aksumbase.com",
   "https://aksumbase-frontend.vercel.app",
   "https://aksumbase-frontend-qsfw.vercel.app",
 ];
