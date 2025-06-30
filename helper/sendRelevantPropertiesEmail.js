@@ -248,7 +248,7 @@ const relevantPropertiesEmailSend = () => {
             <p>These homes are similar to other listings you've viewed.</p>
             ${propertyCardsHtml}
             <p style="text-align:center; margin-top: 20px;">
-              <a href="https://aksumbase-frontend-qsfw.vercel.app" style="background-color: #4C924D; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Find more homes</a>
+              <a href="https://aksumbase.com" style="background-color: #4C924D; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Find more homes</a>
             </p>
             <p>Happy house hunting! 🏠</p>
           </div>
