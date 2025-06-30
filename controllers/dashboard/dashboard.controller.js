@@ -1015,88 +1015,6 @@ export const updateMultiplePropertyFlagged = async (req, res) => {
   }
 };
 
-export const userRequestTour = async (req, res) => {
-  try {
-    const { skip = 0, limit = 10 } = req.pagination || {};
-    const search = req.query.search || "";
-    const filterDate = req.query.date;
-    const filterTime = req.query.time;
-
-    // Base Prisma filter (excluding tourTimes)
-    const where = {
-      AND: [
-        {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-          ],
-        },
-      ],
-    };
-
-    // Fetch all matching data (before tourTimes filtering)
-    const allRequests = await prisma.propertyTourRequest.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        message: true,
-        tourTimes: true,
-        propertyId: true,
-        createdAt: true,
-        property: {
-          select: {
-            title: true,
-            price: true,
-            address: true,
-            city: true,
-            state: true,
-            zip: true,
-            latitude: true,
-            longitude: true,
-            type: true,
-            bedrooms: true,
-            bathrooms: true,
-            size: true,
-            images: true,
-          },
-        },
-      },
-    });
-
-    // Filter by tourTimes.date and/or tourTimes.time
-    const filteredRequests = allRequests.filter((request) =>
-      request.tourTimes?.some((slot) => {
-        const matchDate = filterDate ? slot.date === filterDate : true;
-        const matchTime = filterTime ? slot.time === filterTime : true;
-        return matchDate && matchTime;
-      })
-    );
-
-    // Paginate filtered data
-    const paginated = filteredRequests.slice(skip, skip + limit);
-
-    res.status(200).json({
-      success: true,
-      data: paginated,
-      pagination: {
-        total: filteredRequests.length,
-        skip: Number(skip),
-        limit: Number(limit),
-      },
-    });
-  } catch (error) {
-    console.error("User tour request fetch error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch user tour requests",
-    });
-  }
-};
-
 export const adminRequestPropertyContactUser = async (req, res) => {
   try {
     const userId = req.userId;
@@ -2264,5 +2182,88 @@ export const updatePropertyRentStatus = async (req, res, next) => {
   } catch (error) {
     console.error("Update property rent status error:", error);
     return next(createError(500, "Failed to update rent status"));
+  }
+};
+
+export const userRequestTour = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const search = req.query.search || "";
+    const filterDate = req.query.date;
+    const filterTime = req.query.time;
+
+    // Base Prisma filter (excluding tourTimes)
+    const where = {
+      AND: [
+        {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      ],
+    };
+
+    // Fetch all matching data (before tourTimes filtering)
+    const allRequests = await prisma.propertyTourRequest.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        message: true,
+        tourTimes: true,
+        status: true,
+        propertyId: true,
+        createdAt: true,
+        property: {
+          select: {
+            title: true,
+            price: true,
+            address: true,
+            city: true,
+            state: true,
+            zip: true,
+            latitude: true,
+            longitude: true,
+            type: true,
+            bedrooms: true,
+            bathrooms: true,
+            size: true,
+            images: true,
+          },
+        },
+      },
+    });
+
+    // Filter by tourTimes.date and/or tourTimes.time
+    const filteredRequests = allRequests.filter((request) =>
+      request.tourTimes?.some((slot) => {
+        const matchDate = filterDate ? slot.date === filterDate : true;
+        const matchTime = filterTime ? slot.time === filterTime : true;
+        return matchDate && matchTime;
+      })
+    );
+
+    // Paginate filtered data
+    const paginated = filteredRequests.slice(skip, skip + limit);
+
+    res.status(200).json({
+      success: true,
+      data: paginated,
+      pagination: {
+        total: filteredRequests.length,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
+    });
+  } catch (error) {
+    console.error("User tour request fetch error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user tour requests",
+    });
   }
 };
