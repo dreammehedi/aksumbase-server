@@ -1932,6 +1932,7 @@ export const getUserStatisticsOverview = async (req, res) => {
           userId,
           status: "approved",
           isSold: false,
+          isRent: false,
         },
       }),
 
