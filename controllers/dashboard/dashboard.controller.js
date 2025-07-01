@@ -1578,6 +1578,9 @@ export const getUserRecentActivity = async (req, res) => {
         where: {
           userId,
           createdAt: { gte: sevenDaysAgo },
+          property: {
+            isNot: null,
+          },
         },
         orderBy: { createdAt: "desc" },
         include: {
