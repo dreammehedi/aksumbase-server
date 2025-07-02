@@ -278,6 +278,7 @@ export const deleteAdmin = async (req, res) => {
     await prisma.bookmark.deleteMany({ where: { userId: id } });
     await prisma.propertyView.deleteMany({ where: { userId: id } });
     await prisma.propertyTourRequest.deleteMany({ where: { userId: id } });
+    await prisma.mortageTools.deleteMany({ where: { userId: id } });
     await prisma.propertyContactUserRequest.deleteMany({
       where: { userId: id },
     });

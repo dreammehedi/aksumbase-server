@@ -89,6 +89,7 @@ model User {
   sessions                   Session[]
   property                   Property[]
   Bookmark                   Bookmark[]
+  MortgageRate               MortgageRate[]
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]
   PropertyContactUserRequest PropertyContactUserRequest[]
@@ -626,6 +627,7 @@ model SiteConfiguration {
   updatedAt        DateTime @updatedAt
 }
 
+// newsletter
 model Newsletter {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   title           String
@@ -642,4 +644,18 @@ model Newsletter {
 
   @@index([status])
   @@index([segment])
+}
+
+// mortgage rate
+model MortgageRate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  type        String
+  rate        Float
+  loanType    String
+  creditScore String?
+  homePurpose String?
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

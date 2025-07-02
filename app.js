@@ -28,6 +28,7 @@ import DevelopmentPlatformRouter from "./routes/home/developmentPlatform.route.j
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
 import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
 import MortageToolsRouter from "./routes/home/mortageTools.route.js";
+import MortgageRateRouter from "./routes/loan-officer/mortgageRate.route.js";
 import BlogRouter from "./routes/other/blog.route.js";
 import ContactUserRouter from "./routes/other/contactUser.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
@@ -202,6 +203,9 @@ app.use("/api", ContactUserRouter);
 app.use("/api", GetEstimateRouter);
 app.use("/api", FaqsRouter);
 app.use("/api", NewsletterRouter);
+
+// loan officer routes
+app.use("/api", MortgageRateRouter);
 
 // Start cron job
 roleExpiryChecker();

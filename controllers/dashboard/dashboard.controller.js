@@ -1608,11 +1608,167 @@ export const getUserRecentActivity = async (req, res) => {
   }
 };
 
+// export const getUsersByRole = async (req, res) => {
+//   const { role, search = "", address, city, state, zipCode,phone, email } = req.query;
+//   const { skip = 0, limit = 20 } = req.pagination || {};
+
+//   // Block invalid or unauthorized roles
+//   if (!role || ["user", "admin"].includes(role)) {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Invalid or unauthorized role.",
+//     });
+//   }
+
+//   let rolesToQuery = [role];
+
+//   // Map 'other_professionals' to multiple roles
+//   if (role === "other_professionals") {
+//     rolesToQuery = ["homeowner_landlord", "property_manager"];
+//   }
+
+//   try {
+//     const users = await prisma.user.findMany({
+//       where: {
+//         role: { in: rolesToQuery },
+//         OR: [
+//           { email: { contains: search, mode: "insensitive" } },
+//           { address: { contains: search, mode: "insensitive" } },
+//           { city: { contains: search, mode: "insensitive" } },
+//           { state: { contains: search, mode: "insensitive" } },
+//           { zipCode: { contains: search, mode: "insensitive" } },
+//         ],
+//       },
+//       select: {
+//         id: true,
+//         username: true,
+//         email: true,
+//         phone: true,
+//         role: true,
+//         bio: true,
+//         address: true,
+//         city: true,
+//         state: true,
+//         zipCode: true,
+//         avatar: true,
+//         userRoles: {
+//           where: { isActive: true },
+//           orderBy: { startDate: "asc" },
+//           take: 1,
+//           select: {
+//             id: true,
+//             startDate: true,
+//             endDate: true,
+//             isActive: true,
+//             isExpired: true,
+//             isPaused: true,
+//           },
+//         },
+//         reviewsReceived: {
+//           include: {
+//             reviewer: {
+//               select: {
+//                 id: true,
+//                 username: true,
+//                 avatar: true,
+//                 email: true,
+//                 phone: true,
+//                 address: true,
+//                 city: true,
+//                 state: true,
+//                 zipCode: true,
+//               },
+//             },
+//           },
+//         },
+//       },
+//       skip: Number(skip),
+//       take: Number(limit),
+//     });
+
+//     const filtered = users
+//       .map((user) => {
+//         const reviews = user.reviewsReceived || [];
+//         const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+//         const averageRating = reviews.length
+//           ? (totalRating / reviews.length).toFixed(1)
+//           : null;
+
+//         return {
+//           id: user.id,
+//           username: user.username,
+//           email: user.email,
+//           phone: user.phone,
+//           role: user.role,
+//           bio: user.bio,
+//           address: user.address,
+//           city: user.city,
+//           state: user.state,
+//           zipCode: user.zipCode,
+//           avatar: user.avatar,
+//           userRole: user.userRoles[0] || null,
+//           averageRating,
+//           totalReviews: reviews.length,
+//           reviews,
+//         };
+//       })
+//       .sort((a, b) => {
+//         const aActive = a.userRole?.isActive;
+//         const bActive = b.userRole?.isActive;
+
+//         if (aActive && !bActive) return -1;
+//         if (!aActive && bActive) return 1;
+
+//         const dateA = new Date(a.userRole?.startDate || 0);
+//         const dateB = new Date(b.userRole?.startDate || 0);
+//         return dateA - dateB;
+//       });
+
+//     const total = await prisma.user.count({
+//       where: {
+//         role: { in: rolesToQuery },
+//         OR: [
+//           { email: { contains: search, mode: "insensitive" } },
+//           { address: { contains: search, mode: "insensitive" } },
+//           { city: { contains: search, mode: "insensitive" } },
+//           { state: { contains: search, mode: "insensitive" } },
+//           { zipCode: { contains: search, mode: "insensitive" } },
+//         ],
+//       },
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       role,
+//       data: filtered,
+//       pagination: {
+//         total,
+//         skip: Number(skip),
+//         limit: Number(limit),
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error fetching users by role:", error.message);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to get users by role.",
+//     });
+//   }
+// };
+
 export const getUsersByRole = async (req, res) => {
-  const { role, search = "" } = req.query;
+  const {
+    role,
+    search = "",
+    address,
+    city,
+    state,
+    zipCode,
+    phone,
+    email,
+  } = req.query;
   const { skip = 0, limit = 20 } = req.pagination || {};
 
-  // Block invalid or unauthorized roles
   if (!role || ["user", "admin"].includes(role)) {
     return res.status(403).json({
       success: false,
@@ -1622,23 +1778,36 @@ export const getUsersByRole = async (req, res) => {
 
   let rolesToQuery = [role];
 
-  // Map 'other_professionals' to multiple roles
   if (role === "other_professionals") {
     rolesToQuery = ["homeowner_landlord", "property_manager"];
   }
 
+  // Dynamic filter building
+  const filters = {
+    role: { in: rolesToQuery },
+
+    ...(search && {
+      OR: [
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
+        { state: { contains: search, mode: "insensitive" } },
+        { zipCode: { contains: search, mode: "insensitive" } },
+      ],
+    }),
+
+    ...(email && { email: { contains: email, mode: "insensitive" } }),
+    ...(phone && { phone: { contains: phone, mode: "insensitive" } }),
+    ...(address && { address: { contains: address, mode: "insensitive" } }),
+    ...(city && { city: { contains: city, mode: "insensitive" } }),
+    ...(state && { state: { contains: state, mode: "insensitive" } }),
+    ...(zipCode && { zipCode: { contains: zipCode, mode: "insensitive" } }),
+  };
+
   try {
     const users = await prisma.user.findMany({
-      where: {
-        role: { in: rolesToQuery },
-        OR: [
-          { email: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
-          { city: { contains: search, mode: "insensitive" } },
-          { state: { contains: search, mode: "insensitive" } },
-          { zipCode: { contains: search, mode: "insensitive" } },
-        ],
-      },
+      where: filters,
       select: {
         id: true,
         username: true,
@@ -1724,18 +1893,7 @@ export const getUsersByRole = async (req, res) => {
         return dateA - dateB;
       });
 
-    const total = await prisma.user.count({
-      where: {
-        role: { in: rolesToQuery },
-        OR: [
-          { email: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
-          { city: { contains: search, mode: "insensitive" } },
-          { state: { contains: search, mode: "insensitive" } },
-          { zipCode: { contains: search, mode: "insensitive" } },
-        ],
-      },
-    });
+    const total = await prisma.user.count({ where: filters });
 
     res.status(200).json({
       success: true,
