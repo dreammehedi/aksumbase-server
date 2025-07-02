@@ -1,25 +1,21 @@
 import prisma from "../../lib/prisma.js";
 
-// Get single mortgage rate by ID (from query param)
+// Get all mortgage rates (ordered)
 export const getMortgageRate = async (req, res) => {
-  const { id } = req.query;
-  if (!id) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Mortgage rate ID required." });
-  }
-
   try {
-    const rate = await prisma.mortgageRate.findUnique({ where: { id } });
-    if (!rate) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Mortgage rate not found." });
-    }
-    res.json({ success: true, data: rate });
+    const data = await prisma.mortgageRate.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
   } catch (error) {
     console.error("Get mortgage rate error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch mortgage rate" });
   }
 };
 
@@ -52,17 +48,18 @@ export const mortgageRate = async (req, res) => {
       pagination: { total, skip: Number(skip), limit: Number(limit) },
     });
   } catch (error) {
-    console.error("Get mortgage rate error:", error);
+    console.error("List mortgage rates error:", error);
     res
       .status(500)
-      .json({ success: false, message: "Failed to fetch mortgage rate" });
+      .json({ success: false, message: "Failed to fetch mortgage rates" });
   }
 };
+
 // Create mortgage rate (loan officer only)
 export const createMortgageRate = async (req, res) => {
   try {
     const { type, rate, loanType, creditScore, homePurpose } = req.body;
-    const userId = req.user.id; // from verifyToken middleware
+    const userId = req.userId;
 
     if (!type || !rate || !loanType) {
       return res.status(400).json({
@@ -78,7 +75,9 @@ export const createMortgageRate = async (req, res) => {
         loanType,
         creditScore: creditScore || null,
         homePurpose: homePurpose || null,
-        userId,
+        user: {
+          connect: { id: userId },
+        },
       },
     });
 
@@ -93,7 +92,7 @@ export const createMortgageRate = async (req, res) => {
 export const updateMortgageRate = async (req, res) => {
   try {
     const { id, type, rate, loanType, creditScore, homePurpose } = req.body;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     if (!id) {
       return res
@@ -101,17 +100,16 @@ export const updateMortgageRate = async (req, res) => {
         .json({ success: false, message: "Mortgage rate ID required." });
     }
 
-    // Find the mortgage rate to verify ownership
     const existingRate = await prisma.mortgageRate.findUnique({
       where: { id },
     });
+
     if (!existingRate) {
       return res
         .status(404)
         .json({ success: false, message: "Mortgage rate not found." });
     }
 
-    // Optional: restrict updates to owner only
     if (existingRate.userId !== userId) {
       return res.status(403).json({
         success: false,
@@ -141,7 +139,7 @@ export const updateMortgageRate = async (req, res) => {
 export const deleteMortgageRate = async (req, res) => {
   try {
     const { id } = req.body;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     if (!id) {
       return res
@@ -152,6 +150,7 @@ export const deleteMortgageRate = async (req, res) => {
     const existingRate = await prisma.mortgageRate.findUnique({
       where: { id },
     });
+
     if (!existingRate) {
       return res
         .status(404)
