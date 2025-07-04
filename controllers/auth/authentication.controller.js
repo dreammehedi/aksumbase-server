@@ -336,7 +336,9 @@ export const loginUser = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found." });
 
     if (user.status !== "active")
-      return res.status(403).json({ message: `Account is ${user.status}.` });
+      return res.status(403).json({
+        message: `Your AksumBase account has been ${user.status} by an administrator. If you believe this was a mistake, please contact support.`,
+      });
 
     // const isAdmin = email === "admin@gmail.com";
     // const passwordMatch = isAdmin
