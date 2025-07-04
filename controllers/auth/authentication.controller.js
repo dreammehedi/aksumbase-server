@@ -1093,7 +1093,7 @@ export const toggleUserStatus = async (req, res) => {
     return res.status(400).json({ error: "User ID is required!" });
   }
 
-  if (!["active", "suspended"].includes(status)) {
+  if (!["active", "inactive"].includes(status)) {
     return res.status(400).json({ error: "Invalid status!" });
   }
 
@@ -1128,8 +1128,8 @@ export const toggleUserStatus = async (req, res) => {
       data: { status },
     });
 
-    // Remove sessions if suspended
-    if (status === "suspended") {
+    // Remove sessions if inactive
+    if (status === "inactive") {
       await prisma.session.deleteMany({ where: { userId } });
     }
 
@@ -1137,7 +1137,7 @@ export const toggleUserStatus = async (req, res) => {
     await sendEmail({
       to: targetUser.email,
       subject: `Your AksumBase Account Has Been ${
-        status === "suspended" ? "Suspended" : "Activated"
+        status === "inactive" ? "In-Active" : "Activated"
       }`,
       html: `
         <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
@@ -1150,7 +1150,7 @@ export const toggleUserStatus = async (req, res) => {
               Your AksumBase account has been <strong style="text-transform: uppercase;">${status}</strong> by an administrator.
             </p>
             ${
-              status === "suspended"
+              status === "inactive"
                 ? `<p style="font-size: 15px; color: #333;">If you believe this was a mistake, please contact support.</p>`
                 : `<p style="font-size: 15px; color: #333;">You may now log in and continue using your account as usual.</p>`
             }
