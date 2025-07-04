@@ -82,6 +82,183 @@ export const searchProperty = async (req, res) => {
   }
 };
 
+// export const createProperty = async (req, res) => {
+//   try {
+//     const {
+//       title,
+//       price,
+//       address,
+//       city,
+//       state,
+//       zip,
+//       latitude,
+//       longitude,
+//       neighborhood,
+//       type,
+//       property,
+//       bedrooms,
+//       bathrooms,
+//       size,
+//       lotSize,
+//       yearBuilt,
+//       hoaFees,
+//       leaseLength,
+//       furnished,
+//       deposit,
+//       moveInDate,
+//       amenities,
+//       garage,
+//       basement,
+//       fireplace,
+//       pool,
+//       pet,
+//       utilities,
+//       income,
+//       school,
+//       bus,
+//       restaurant,
+//       description,
+//     } = req.body;
+
+//     const userId = req.userId;
+//     console.log(req.body);
+//     if (!userId)
+//       return res.status(400).json({ message: "User ID not found from token." });
+
+//     if (
+//       !title ||
+//       !type ||
+//       !property ||
+//       !price ||
+//       !bedrooms ||
+//       !bathrooms ||
+//       !size ||
+//       !description
+//     ) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Missing required fields" });
+//     }
+
+//     const user = await prisma.user.findUnique({
+//       where: { id: userId },
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found.",
+//       });
+//     }
+
+//     console.log(user.role);
+//     // Parse amenities if it comes as a JSON string
+//     let amenitiesArray = [];
+//     try {
+//       amenitiesArray =
+//         typeof amenities === "string" ? JSON.parse(amenities) : amenities;
+//       if (!Array.isArray(amenitiesArray)) {
+//         amenitiesArray = [];
+//       }
+//     } catch {
+//       amenitiesArray = [];
+//     }
+
+//     const slug = slugify(title, { lower: true, strict: true });
+
+//     if (!req.files || req.files.length === 0) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Images are required" });
+//     }
+
+//     const uploadedImages = await Promise.all(
+//       req.files.map(async (file) => ({
+//         url: file.path,
+//         publicId: file.filename,
+//       }))
+//     );
+
+//     const existingProperty = await prisma.property.findFirst({
+//       where: {
+//         OR: [
+//           { slug },
+//           {
+//             latitude: latitude,
+//             longitude: longitude,
+//           },
+//         ],
+//       },
+//     });
+
+//     const newProperty = await prisma.property.create({
+//       data: {
+//         title,
+//         slug,
+//         price: parseFloat(price),
+//         address,
+//         city,
+//         state,
+//         zip,
+//         latitude,
+//         longitude,
+//         neighborhood,
+//         type,
+//         property,
+//         bedrooms: parseInt(bedrooms),
+//         bathrooms: parseInt(bathrooms),
+//         size: parseInt(size),
+//         lotSize: lotSize ? parseFloat(lotSize) : undefined,
+//         yearBuilt: yearBuilt ? parseInt(yearBuilt) : undefined,
+//         hoaFees: hoaFees ? parseInt(hoaFees) : undefined,
+//         leaseLength,
+//         furnished: furnished === "true",
+//         deposit: deposit ? parseFloat(deposit) : undefined,
+//         moveInDate: moveInDate ? new Date(moveInDate) : undefined,
+//         amenities: amenitiesArray || [],
+//         garage: garage === "true",
+//         basement: basement === "true",
+//         fireplace: fireplace === "true",
+//         pool: pool === "true",
+//         pet,
+//         utilities,
+//         income,
+//         school,
+//         bus,
+//         restaurant,
+//         description,
+//         listingStatus: "active",
+//         listingType: user?.role,
+//         userId,
+//         status:
+//           user?.role === "agent_broker" || user?.role === "property_manager"
+//             ? "approved"
+//             : "pending",
+//         userName: user?.username,
+//         userAvatar: user?.image,
+//         userEmail: user?.email,
+//         images: uploadedImages,
+//         flagStatus: existingProperty ? "approved" : "pending",
+//         flagged: existingProperty ? true : false,
+//         flagReason: existingProperty
+//           ? "Property data already exist. Duplicate property not allow!"
+//           : "",
+//         flaggedAt: existingProperty ? new Date() : null,
+//         reportedBy: existingProperty ? ["Reported by data created time."] : [],
+//       },
+//     });
+
+//     res.status(201).json({ success: true, data: newProperty });
+//   } catch (error) {
+//     console.error("Create property error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to create property",
+//       error: error.message,
+//     });
+//   }
+// };
+
 export const createProperty = async (req, res) => {
   try {
     const {
@@ -121,7 +298,6 @@ export const createProperty = async (req, res) => {
     } = req.body;
 
     const userId = req.userId;
-    console.log(req.body);
     if (!userId)
       return res.status(400).json({ message: "User ID not found from token." });
 
@@ -140,32 +316,40 @@ export const createProperty = async (req, res) => {
         .json({ success: false, message: "Missing required fields" });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
     }
 
-    console.log(user.role);
-    // Parse amenities if it comes as a JSON string
+    // ✅ Restrict "user" role to 1 property only (unless purchased package)
+    if (user.role === "user") {
+      const existingPropertyCount = await prisma.property.count({
+        where: { userId },
+      });
+
+      if (existingPropertyCount >= 1) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You have already listed a property. Please purchase a package to list more.",
+        });
+      }
+    }
+
+    // ✅ Handle amenities parsing
     let amenitiesArray = [];
     try {
       amenitiesArray =
         typeof amenities === "string" ? JSON.parse(amenities) : amenities;
-      if (!Array.isArray(amenitiesArray)) {
-        amenitiesArray = [];
-      }
+      if (!Array.isArray(amenitiesArray)) amenitiesArray = [];
     } catch {
       amenitiesArray = [];
     }
 
-    const slug = slugify(title, { lower: true, strict: true });
-
+    // ✅ Handle image upload validation
     if (!req.files || req.files.length === 0) {
       return res
         .status(400)
@@ -179,6 +363,9 @@ export const createProperty = async (req, res) => {
       }))
     );
 
+    const slug = slugify(title, { lower: true, strict: true });
+
+    // ✅ Check for existing property with same slug/location
     const existingProperty = await prisma.property.findFirst({
       where: {
         OR: [
@@ -239,7 +426,7 @@ export const createProperty = async (req, res) => {
         userEmail: user?.email,
         images: uploadedImages,
         flagStatus: existingProperty ? "approved" : "pending",
-        flagged: existingProperty ? true : false,
+        flagged: !!existingProperty,
         flagReason: existingProperty
           ? "Property data already exist. Duplicate property not allow!"
           : "",
