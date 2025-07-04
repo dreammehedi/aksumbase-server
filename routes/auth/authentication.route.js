@@ -14,6 +14,7 @@ import {
   remove2FA,
   resetPassword,
   setup2FA,
+  toggleUserStatus,
   updateProfile,
   verify2FA,
 } from "../../controllers/auth/authentication.controller.js";
@@ -57,6 +58,14 @@ AuthenticationRouter.put(
   verifyToken,
   upload.none(),
   changePassword
+);
+
+AuthenticationRouter.put(
+  "/admin/user-status",
+  verifyToken,
+  verifyAdminOld,
+  upload.none(),
+  toggleUserStatus
 );
 
 // Initiate Google login

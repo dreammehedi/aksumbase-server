@@ -1077,3 +1077,95 @@ export const getUserProfile = async (req, res, next) => {
     });
   }
 };
+
+export const toggleUserStatus = async (req, res) => {
+  const { status, userId } = req.body;
+  const adminId = req.userId;
+  const adminRole = req.role;
+
+  // Admin access check
+  if (!adminId || (adminRole !== "admin" && adminRole !== "super_admin")) {
+    return res.status(403).json({ error: "Access denied. Admins only." });
+  }
+
+  // Input validation
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required!" });
+  }
+
+  if (!["active", "suspended"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status!" });
+  }
+
+  try {
+    // Fetch target user
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { sessions: true },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found!" });
+    }
+
+    // Prevent self-action
+    if (adminId === userId) {
+      return res
+        .status(400)
+        .json({ error: "You cannot change your own status." });
+    }
+
+    // Prevent action on other admins
+    if (targetUser.role === adminRole) {
+      return res
+        .status(400)
+        .json({ error: "You cannot access another admin account." });
+    }
+
+    // Update user status
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { status },
+    });
+
+    // Remove sessions if suspended
+    if (status === "suspended") {
+      await prisma.session.deleteMany({ where: { userId } });
+    }
+
+    // Send styled email notification
+    await sendEmail({
+      to: targetUser.email,
+      subject: `Your AksumBase Account Has Been ${
+        status === "suspended" ? "Suspended" : "Activated"
+      }`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
+          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-radius: 8px;">
+            <h2 style="color: #4C924D; margin-bottom: 20px;">Account Status Updated</h2>
+            <p style="font-size: 15px; color: #333;">Dear ${
+              targetUser.username
+            },</p>
+            <p style="font-size: 15px; color: #333;">
+              Your AksumBase account has been <strong style="text-transform: uppercase;">${status}</strong> by an administrator.
+            </p>
+            ${
+              status === "suspended"
+                ? `<p style="font-size: 15px; color: #333;">If you believe this was a mistake, please contact support.</p>`
+                : `<p style="font-size: 15px; color: #333;">You may now log in and continue using your account as usual.</p>`
+            }
+            <p style="font-size: 15px; color: #333;">Thank you,<br><strong>The AksumBase Team</strong></p>
+          </div>
+        </div>
+      `,
+    });
+
+    return res.json({
+      message: `User status updated to ${status} and email sent.`,
+      user: updatedUser,
+    });
+  } catch (err) {
+    console.error("Status update error:", err);
+    return res.status(500).json({ error: "Something went wrong!" });
+  }
+};
