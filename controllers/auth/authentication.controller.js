@@ -287,7 +287,7 @@ export const deleteAdmin = async (req, res) => {
       prisma.property.deleteMany({ where: { userId: id } }),
       prisma.review.deleteMany({
         where: {
-          OR: [{ reviewerId: id }, { reviewedUserId: id }],
+          OR: [{ reviewerId: id }, { targetUserId: id }],
         },
       }),
     ]);
