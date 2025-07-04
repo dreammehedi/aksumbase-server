@@ -1148,34 +1148,75 @@ export const property = async (req, res) => {
     };
 
     // 4. Fetch properties
+    // const [properties, total] = await Promise.all([
+    //   prisma.property.findMany({
+    //     where,
+    //     skip: Number(skip),
+    //     take: Number(limit),
+    //     orderBy: { createdAt: "desc" },
+    //   }),
+    //   prisma.property.count({ where }),
+    // ]);
+
+    // 5. Get user bookmark property IDs (if user is logged in)
+    // let bookmarkedPropertyIds = [];
+
+    // if (userId) {
+    //   const bookmarks = await prisma.bookmark.findMany({
+    //     where: { userId },
+    //     select: { propertyId: true, userId: true },
+    //   });
+    //   bookmarkedPropertyIds = bookmarks.map((b) => b.propertyId);
+    // }
+
+    // 6. Add `isBookmarked` to each property
+    // const updatedProperties = properties.map((prop) => {
+    //   return {
+    //     ...prop,
+    //     isBookmarked: bookmarkedPropertyIds.includes(prop.id),
+    //   };
+    // });
+
+    // 4. Fetch properties
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
         where,
         skip: Number(skip),
         take: Number(limit),
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" }, // Initial ordering by creation date
       }),
       prisma.property.count({ where }),
     ]);
 
-    // 5. Get user bookmark property IDs (if user is logged in)
-    let bookmarkedPropertyIds = [];
+    // Custom role priority
+    const rolePriority = {
+      agent_broker: 1,
+      property_manager: 2,
+      homeowner_landlord: 3,
+    };
 
+    // 5. Get user bookmark property IDs
+    let bookmarkedPropertyIds = [];
     if (userId) {
       const bookmarks = await prisma.bookmark.findMany({
         where: { userId },
-        select: { propertyId: true, userId: true },
+        select: { propertyId: true },
       });
       bookmarkedPropertyIds = bookmarks.map((b) => b.propertyId);
     }
 
-    // 6. Add `isBookmarked` to each property
-    const updatedProperties = properties.map((prop) => {
-      return {
+    // 6. Add isBookmarked + sort manually by listingType
+    const updatedProperties = properties
+      .map((prop) => ({
         ...prop,
         isBookmarked: bookmarkedPropertyIds.includes(prop.id),
-      };
-    });
+      }))
+      .sort((a, b) => {
+        return (
+          (rolePriority[a.listingType] || 99) -
+          (rolePriority[b.listingType] || 99)
+        );
+      });
 
     // 7. Response
     res.status(200).json({
