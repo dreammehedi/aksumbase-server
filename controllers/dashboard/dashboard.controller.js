@@ -1394,14 +1394,27 @@ export const renewRolePurchaseIntent = async (req, res) => {
   try {
     const stripe = await stripeConfig();
     const userId = req.userId;
-    const { rolePackageId, currency = "usd", metadata = {} } = req.body;
+    const {
+      rolePackageId,
+      durationDays,
+      currency = "usd",
+      metadata = {},
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized user." });
     }
 
-    if (!rolePackageId) {
-      return res.status(400).json({ error: "rolePackageId is required." });
+    if (!rolePackageId || !durationDays) {
+      return res
+        .status(400)
+        .json({ error: "Required fields: rolePackageId, durationDays." });
+    }
+    // Validate durationDays
+    if (durationDays < 30) {
+      return res
+        .status(400)
+        .json({ error: "DurationDays must be a positive number." });
     }
 
     // 🔎 Get current package details
@@ -1409,7 +1422,7 @@ export const renewRolePurchaseIntent = async (req, res) => {
       where: { id: rolePackageId },
     });
 
-    if (!rolePackage || !rolePackage.price) {
+    if (!rolePackage || !rolePackage.totalPrice) {
       return res.status(404).json({ error: "Role package not found." });
     }
 
@@ -1428,6 +1441,8 @@ export const renewRolePurchaseIntent = async (req, res) => {
         error: "No expired role found for this package. Cannot renew.",
       });
     }
+    const singleMonth = durationDays / 30;
+    const totalListings = rolePackage.listingLimit * singleMonth;
 
     // ✅ Create Stripe Checkout session with current package price
     const session = await stripe.checkout.sessions.create({
@@ -1442,7 +1457,7 @@ export const renewRolePurchaseIntent = async (req, res) => {
               name: rolePackage.name,
               description: rolePackage.roleName,
             },
-            unit_amount: Math.round(rolePackage.price * 100), // Convert to cents
+            unit_amount: Math.round(rolePackage.totalPrice * singleMonth * 100), // Convert to cents
           },
           quantity: 1,
         },
@@ -1451,6 +1466,8 @@ export const renewRolePurchaseIntent = async (req, res) => {
         userId,
         rolePackageId,
         renewUserRoleId: expiredRole.id, // Pass expired role ID to update later
+        durationDays,
+        totalListings,
         ...metadata,
       },
       invoice_creation: { enabled: true },

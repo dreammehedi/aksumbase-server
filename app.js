@@ -158,8 +158,25 @@ app.get("/health", (req, res) => {
 });
 
 // In your express app or router file
-
 app.get("/api/stripe/session", async (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId) return res.status(400).json({ error: "Session ID required" });
+
+  const config = await prisma.stripeConfiguration.findFirst();
+  if (!config?.stripeSecret)
+    throw new Error("Stripe secret key not found in DB");
+
+  try {
+    const stripe = new Stripe(config.stripeSecret);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    res.json(session);
+  } catch (error) {
+    console.error("Failed to fetch session:", error);
+    res.status(500).json({ error: "Failed to fetch session" });
+  }
+});
+
+app.get("/api/role-renew/stripe/session", async (req, res) => {
   const { sessionId } = req.query;
   if (!sessionId) return res.status(400).json({ error: "Session ID required" });
 
