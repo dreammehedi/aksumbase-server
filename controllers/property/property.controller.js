@@ -339,6 +339,22 @@ export const createProperty = async (req, res) => {
       }
     }
 
+    const checkPackageActive = await prisma.userRole.findUnique({
+      where: { userId: user?.id },
+    });
+
+    if (checkPackageActive.isExpired) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User package is expired." });
+    }
+
+    if (checkPackageActive.useListing >= checkPackageActive.listingLimit) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User package limit reached." });
+    }
+
     // ✅ Handle amenities parsing
     let amenitiesArray = [];
     try {
@@ -432,6 +448,18 @@ export const createProperty = async (req, res) => {
           : "",
         flaggedAt: existingProperty ? new Date() : null,
         reportedBy: existingProperty ? ["Reported by data created time."] : [],
+      },
+    });
+
+    await prisma.userRole.updateMany({
+      where: {
+        userId: user?.id,
+        isExpired: false,
+      },
+      data: {
+        useListing: {
+          increment: 1,
+        },
       },
     });
 

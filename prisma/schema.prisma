@@ -124,6 +124,7 @@ model UserRole {
   rolePackageId String    @db.ObjectId
   durationDays  Int       @default(0) // Duration in days
   listingLimit  Int       @default(0)  // Default listing limit
+  useListing    Int       @default(0)  // Used listing count
   startDate     DateTime?
   endDate       DateTime?
   isActive      Boolean   @default(false)
