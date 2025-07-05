@@ -1199,7 +1199,7 @@ export const getUserRolePackagePurchase = async (req, res) => {
     const [allPackages, userRole] = await Promise.all([
       prisma.rolePackage.findMany({
         where: { status: "active" },
-        orderBy: { price: "asc" }, // Optional: sort packages by price or name
+        // orderBy: { totalPrice: "asc" }, // Optional: sort packages by price or name
       }),
       prisma.userRole.findFirst({
         where: { userId },
