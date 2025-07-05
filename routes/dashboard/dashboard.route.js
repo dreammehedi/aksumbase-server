@@ -160,11 +160,7 @@ DashboardRouter.get(
 );
 
 // user route
-DashboardRouter.get(
-  "/user/role-package-purchase",
-  verifyToken,
-  getUserRolePackagePurchase
-);
+DashboardRouter.get("/user/role-package-purchase", getUserRolePackagePurchase);
 
 DashboardRouter.get(
   "/user/property",
