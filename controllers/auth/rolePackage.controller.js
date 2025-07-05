@@ -47,13 +47,13 @@ export const createRolePackage = async (req, res) => {
     const existingPackage = await prisma.rolePackage.findFirst({
       where: {
         roleName,
-        durationDays: parseInt(durationDays),
+        listingLimit: parseInt(listingLimit),
       },
     });
 
     if (existingPackage) {
       return res.status(409).json({
-        error: `A package already exists for role "${roleName}" with duration ${durationDays} days.`,
+        error: `A package already exists for role "${roleName}" with listing limit ${listingLimit}.`,
       });
     }
 
