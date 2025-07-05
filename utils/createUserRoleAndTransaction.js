@@ -113,6 +113,7 @@ export const createRenewUserRoleAndTransaction = async (session) => {
         isPaused: false,
         durationDays: parseInt(durationDays) || 0,
         listingLimit: parseInt(totalListings) || 0,
+        useListing: 0,
       },
     });
 
