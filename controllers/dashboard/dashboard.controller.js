@@ -1196,11 +1196,11 @@ export const getUserRolePackagePurchase = async (req, res) => {
 
   try {
     // Fetch in parallel
-    const [allPackages, userRole] = await Promise.all([
-      prisma.rolePackage.findMany({
-        where: { status: "active" },
-        // orderBy: { totalPrice: "asc" }, // Optional: sort packages by price or name
-      }),
+    const [userRole] = await Promise.all([
+      // prisma.rolePackage.findMany({
+      //   where: { status: "active" },
+      //   // orderBy: { totalPrice: "asc" }, // Optional: sort packages by price or name
+      // }),
       prisma.userRole.findFirst({
         where: { userId },
         orderBy: { createdAt: "desc" },
@@ -1237,6 +1237,8 @@ export const getUserRolePackagePurchase = async (req, res) => {
               stripeId: true,
               createdAt: true,
               status: true,
+              durationDays: true,
+              listingLimit: true,
             },
           },
         },
@@ -1246,7 +1248,6 @@ export const getUserRolePackagePurchase = async (req, res) => {
     res.status(200).json({
       message: "Fetched role packages and user purchase successfully.",
       success: true,
-      allPackages,
       userPurchase: userRole || null,
     });
   } catch (error) {
