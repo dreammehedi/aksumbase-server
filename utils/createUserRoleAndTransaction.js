@@ -39,8 +39,8 @@ export const createUserRoleAndTransaction = async (session) => {
       isPaused: false,
       isExpired: false,
       isVerified: false,
-      durationDays: durationDays || 0,
-      listingLimit: totalListings || 0,
+      durationDays: parseInt(durationDays) || 0,
+      listingLimit: parseInt(totalListings) || 0,
     },
   });
 

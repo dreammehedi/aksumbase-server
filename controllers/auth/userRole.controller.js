@@ -25,10 +25,10 @@ export const createRolePurchaseIntent = async (req, res) => {
         .json({ error: "Required fields: rolePackageId, durationDays." });
     }
     // Validate durationDays
-    if (durationDays <= 30) {
+    if (durationDays < 30) {
       return res
         .status(400)
-        .json({ error: "durationDays must be a positive number." });
+        .json({ error: "DurationDays must be a positive number." });
     }
     const rolePackage = await prisma.rolePackage.findUnique({
       where: { id: rolePackageId },
