@@ -4,7 +4,8 @@ import prisma from "../lib/prisma.js";
 
 // role package purchase stripe webhook & transation
 export const createUserRoleAndTransaction = async (session) => {
-  const { userId, rolePackageId } = session.metadata;
+  const { userId, rolePackageId, durationDays, totalListings } =
+    session.metadata;
   const stripeId = session.id;
   const amount = session.amount_total / 100;
   const currency = session.currency;
@@ -38,6 +39,8 @@ export const createUserRoleAndTransaction = async (session) => {
       isPaused: false,
       isExpired: false,
       isVerified: false,
+      durationDays: durationDays || 0,
+      listingLimit: totalListings || 0,
     },
   });
 
