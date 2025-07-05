@@ -153,6 +153,7 @@ model Transaction {
   status     String
   method     String?
   stripeId   String   @unique
+  isTransactionPurchase Boolean @default(false) // true for purchase, false for renew
   invoiceUrl String?
   createdAt  DateTime @default(now())
 
