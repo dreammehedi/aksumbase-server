@@ -1190,18 +1190,15 @@ export const getAdminRolePackage = async (req, res) => {
 export const getUserRolePackagePurchase = async (req, res) => {
   const userId = req?.query?.userId;
 
-  if (!userId) {
-    return res.status(401).json({ error: "Unauthorized access." });
-  }
-
   try {
-    // Fetch in parallel
-    const [allPackages, userRole] = await Promise.all([
-      prisma.rolePackage.findMany({
-        where: { status: "active" },
-        // orderBy: { totalPrice: "asc" }, // Optional: sort packages by price or name
-      }),
-      prisma.userRole.findFirst({
+    const allPackagesPromise = prisma.rolePackage.findMany({
+      where: { status: "active" },
+    });
+
+    let userRolePromise = Promise.resolve(null); // default if no userId
+
+    if (userId) {
+      userRolePromise = prisma.userRole.findFirst({
         where: { userId },
         orderBy: { createdAt: "desc" },
         include: {
@@ -1242,14 +1239,19 @@ export const getUserRolePackagePurchase = async (req, res) => {
             },
           },
         },
-      }),
+      });
+    }
+
+    const [allPackages, userRole] = await Promise.all([
+      allPackagesPromise,
+      userRolePromise,
     ]);
 
     res.status(200).json({
       message: "Fetched role packages and user purchase successfully.",
       success: true,
       allPackages,
-      userPurchase: userRole || null,
+      userPurchase: userRole, // could be null
     });
   } catch (error) {
     console.error(
