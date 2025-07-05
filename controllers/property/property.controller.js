@@ -339,7 +339,7 @@ export const createProperty = async (req, res) => {
       }
     }
 
-    const checkPackageActive = await prisma.userRole.findUnique({
+    const checkPackageActive = await prisma.userRole.findFirst({
       where: { userId: user?.id },
     });
 
