@@ -177,9 +177,7 @@ export const activateRole = async (req, res) => {
 
     // 4. Calculate start and end dates
     const startDate = new Date();
-    const endDate = dayjs(startDate)
-      .add(userRole.rolePackage.durationDays, "day")
-      .toDate();
+    const endDate = dayjs(startDate).add(userRole.durationDays, "day").toDate();
 
     // 5. Activate the user role
     const activatedRole = await prisma.userRole.update({
