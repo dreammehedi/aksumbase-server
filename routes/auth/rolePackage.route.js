@@ -3,6 +3,7 @@ import { upload } from "../../config/upload.js";
 import {
   createRolePackage,
   getAllRolePackages,
+  getSingleRolePackage,
   updateRolePackage,
 } from "../../controllers/auth/rolePackage.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
@@ -25,5 +26,7 @@ RolePackageRouter.put(
   upload.single("image"),
   updateRolePackage
 );
+
+RolePackageRouter.get("/role-package/:slug", getSingleRolePackage);
 
 export default RolePackageRouter;

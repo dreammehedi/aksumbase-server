@@ -7,14 +7,24 @@ const allowedRoles = [
   "property_manager",
 ];
 
+import slugify from "slugify";
+
+// CREATE
 export const createRolePackage = async (req, res) => {
   try {
-    const { name, price, durationDays, features, roleName } = req.body;
+    const { name, singleListingPrice, features, roleName, listingLimit } =
+      req.body;
 
-    if (!name || !price || !durationDays || !roleName || !features) {
+    if (
+      !name ||
+      !singleListingPrice ||
+      !roleName ||
+      !features ||
+      !listingLimit
+    ) {
       return res.status(400).json({
         error:
-          "All fields (name, price, durationDays, features, roleName) are required.",
+          "All fields (name, singleListingPrice, features, roleName, listingLimit) are required.",
       });
     }
 
@@ -26,39 +36,28 @@ export const createRolePackage = async (req, res) => {
       });
     }
 
-    // Upload images
     const image = req.file;
-
     if (!image) {
       return res.status(400).json({
         success: false,
-        message: "Image are required",
+        message: "Image is required",
       });
     }
 
-    // Check for duplicate price + durationDays on same roleName
     const existingPackage = await prisma.rolePackage.findFirst({
       where: {
         roleName,
-        price: parseFloat(price),
         durationDays: parseInt(durationDays),
       },
     });
 
     if (existingPackage) {
       return res.status(409).json({
-        error: `A package already exists for role "${roleName}" with price ${price} and duration ${durationDays} days.`,
+        error: `A package already exists for role "${roleName}" with duration ${durationDays} days.`,
       });
     }
 
-    if (existingPackage) {
-      return res.status(409).json({
-        error:
-          "A package with the same name, role, price, and duration already exists.",
-      });
-    }
-
-    // Parse features
+    // Features parsing
     let featuresArray;
     if (typeof features === "string") {
       try {
@@ -76,14 +75,18 @@ export const createRolePackage = async (req, res) => {
       return res.status(400).json({ error: "Invalid features format." });
     }
 
+    const slug = slugify(name, { lower: true, strict: true });
+
     const newPackage = await prisma.rolePackage.create({
       data: {
         name: name.toLowerCase(),
-        price: parseFloat(price),
-        durationDays: parseInt(durationDays),
+        slug,
+        singleListingPrice: parseFloat(singleListingPrice),
+        totalPrice: parseFloat(singleListingPrice) * parseInt(listingLimit),
         features: featuresArray,
         roleName,
         status: "active",
+        listingLimit: parseInt(listingLimit),
         image: image.path,
         imagePublicId: image.filename,
       },
@@ -99,22 +102,32 @@ export const createRolePackage = async (req, res) => {
   }
 };
 
+// UPDATE
 export const updateRolePackage = async (req, res) => {
   try {
-    const { id, name, price, durationDays, features, roleName, status } =
-      req.body;
+    const {
+      id,
+      name,
+      singleListingPrice,
+      features,
+      roleName,
+      status,
+      listingLimit,
+    } = req.body;
 
+    // Validation
     if (
+      !id ||
       !name ||
-      !price ||
-      !durationDays ||
-      !roleName ||
+      !singleListingPrice ||
       !features ||
-      status === undefined
+      !roleName ||
+      status === undefined ||
+      !listingLimit
     ) {
       return res.status(400).json({
         error:
-          "All fields (name, price, durationDays, features, roleName, status) are required.",
+          "All fields (id, name, singleListingPrice, features, roleName, status, listingLimit) are required.",
       });
     }
 
@@ -127,23 +140,23 @@ export const updateRolePackage = async (req, res) => {
     }
 
     const existing = await prisma.rolePackage.findUnique({ where: { id } });
-
     if (!existing) {
       return res.status(404).json({ error: "Role package not found." });
     }
 
+    // Check for duplicate by roleName, listingLimit, singleListingPrice
     const duplicate = await prisma.rolePackage.findFirst({
       where: {
         id: { not: id },
         roleName,
-        price: parseFloat(price),
-        durationDays: parseInt(durationDays),
+        listingLimit: parseInt(listingLimit),
+        singleListingPrice: parseFloat(singleListingPrice),
       },
     });
 
     if (duplicate) {
       return res.status(409).json({
-        error: `Another package already exists for role "${roleName}" with price ${price} and duration ${durationDays} days.`,
+        error: `Another package already exists for role "${roleName}" with listing limit ${listingLimit} and single price ${singleListingPrice}.`,
       });
     }
 
@@ -165,22 +178,22 @@ export const updateRolePackage = async (req, res) => {
       return res.status(400).json({ error: "Invalid features format." });
     }
 
-    // ✅ Collect updated fields
     const updatedFields = {
       name: name.toLowerCase(),
-      price: parseFloat(price),
-      durationDays: parseInt(durationDays),
+      slug: slugify(name, { lower: true, strict: true }),
+      singleListingPrice: parseFloat(singleListingPrice),
+      totalPrice: parseFloat(singleListingPrice) * parseInt(listingLimit),
+      listingLimit: parseInt(listingLimit),
       features: featuresArray,
       roleName,
       status,
     };
 
-    // ✅ Handle image update
+    // Handle image update
     if (req.file) {
       if (existing.imagePublicId) {
         await cloudinary.uploader.destroy(existing.imagePublicId);
       }
-
       updatedFields.image = req.file.path;
       updatedFields.imagePublicId = req.file.filename;
     }
@@ -199,7 +212,7 @@ export const updateRolePackage = async (req, res) => {
     res.status(500).json({ error: "Something went wrong." });
   }
 };
-
+// GET ALL
 export const getAllRolePackages = async (req, res) => {
   try {
     const packages = await prisma.rolePackage.findMany({
@@ -212,5 +225,33 @@ export const getAllRolePackages = async (req, res) => {
   } catch (error) {
     console.error("🔥 Get Role Packages Error:", error.message);
     res.status(500).json({ error: "Failed to fetch role packages." });
+  }
+};
+
+// GET SINGLE
+export const getSingleRolePackage = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({ error: "Role package slug is required." });
+    }
+
+    const rolePackage = await prisma.rolePackage.findUnique({
+      where: { slug },
+    });
+
+    if (!rolePackage) {
+      return res.status(404).json({ error: "Role package not found." });
+    }
+
+    res.json({
+      success: true,
+      message: "Role package fetched successfully.",
+      data: rolePackage,
+    });
+  } catch (error) {
+    console.error("🔥 Get Single Role Package Error:", error.message);
+    res.status(500).json({ error: "Failed to fetch role package." });
   }
 };

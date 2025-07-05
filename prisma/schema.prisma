@@ -36,9 +36,12 @@ enum RolePackageStatus {
 model RolePackage {
   id            String            @id @default(auto()) @map("_id") @db.ObjectId
   name          String
+  slug          String            @unique 
   roleName      RoleName
-  price         Float
-  durationDays  Int
+  singleListingPrice         Float
+  totalPrice         Float
+  durationDays  Int               @default(30) // Duration in days
+  listingLimit  Int               @default(1)  // Default listing limit
   features      String[]
   image         String
   imagePublicId String?
