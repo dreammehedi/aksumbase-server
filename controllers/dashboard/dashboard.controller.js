@@ -1247,12 +1247,19 @@ export const getUserRolePackagePurchase = async (req, res) => {
       userRolePromise,
     ]);
 
-    res.status(200).json({
-      message: "Fetched role packages and user purchase successfully.",
-      success: true,
-      allPackages,
-      userPurchase: userRole, // could be null
-    });
+    if (userId) {
+      res.status(200).json({
+        message: "Fetched user purchase successfully.",
+        success: true,
+        userPurchase: userRole,
+      });
+    } else {
+      res.status(200).json({
+        message: "Fetched role packages and user purchase successfully.",
+        success: true,
+        allPackages,
+      });
+    }
   } catch (error) {
     console.error(
       "Error fetching role packages or user purchase:",
