@@ -55,6 +55,8 @@ export const createUserRoleAndTransaction = async (session) => {
       method: paymentMethod,
       stripeId,
       invoiceUrl,
+      durationDays: parseInt(durationDays) || 0,
+      listingLimit: parseInt(totalListings) || 0,
     },
   });
 
