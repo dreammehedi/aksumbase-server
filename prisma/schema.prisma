@@ -417,6 +417,8 @@ model Property {
   basement  Boolean? @default(false)
   fireplace Boolean? @default(false)
   pool      Boolean? @default(false)
+  isForeclosure Boolean? @default(false)
+  isNewConstruction Boolean? @default(false)
 
   pet        String?
   utilities  String?

@@ -82,183 +82,6 @@ export const searchProperty = async (req, res) => {
   }
 };
 
-// export const createProperty = async (req, res) => {
-//   try {
-//     const {
-//       title,
-//       price,
-//       address,
-//       city,
-//       state,
-//       zip,
-//       latitude,
-//       longitude,
-//       neighborhood,
-//       type,
-//       property,
-//       bedrooms,
-//       bathrooms,
-//       size,
-//       lotSize,
-//       yearBuilt,
-//       hoaFees,
-//       leaseLength,
-//       furnished,
-//       deposit,
-//       moveInDate,
-//       amenities,
-//       garage,
-//       basement,
-//       fireplace,
-//       pool,
-//       pet,
-//       utilities,
-//       income,
-//       school,
-//       bus,
-//       restaurant,
-//       description,
-//     } = req.body;
-
-//     const userId = req.userId;
-//     console.log(req.body);
-//     if (!userId)
-//       return res.status(400).json({ message: "User ID not found from token." });
-
-//     if (
-//       !title ||
-//       !type ||
-//       !property ||
-//       !price ||
-//       !bedrooms ||
-//       !bathrooms ||
-//       !size ||
-//       !description
-//     ) {
-//       return res
-//         .status(400)
-//         .json({ success: false, message: "Missing required fields" });
-//     }
-
-//     const user = await prisma.user.findUnique({
-//       where: { id: userId },
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found.",
-//       });
-//     }
-
-//     console.log(user.role);
-//     // Parse amenities if it comes as a JSON string
-//     let amenitiesArray = [];
-//     try {
-//       amenitiesArray =
-//         typeof amenities === "string" ? JSON.parse(amenities) : amenities;
-//       if (!Array.isArray(amenitiesArray)) {
-//         amenitiesArray = [];
-//       }
-//     } catch {
-//       amenitiesArray = [];
-//     }
-
-//     const slug = slugify(title, { lower: true, strict: true });
-
-//     if (!req.files || req.files.length === 0) {
-//       return res
-//         .status(400)
-//         .json({ success: false, message: "Images are required" });
-//     }
-
-//     const uploadedImages = await Promise.all(
-//       req.files.map(async (file) => ({
-//         url: file.path,
-//         publicId: file.filename,
-//       }))
-//     );
-
-//     const existingProperty = await prisma.property.findFirst({
-//       where: {
-//         OR: [
-//           { slug },
-//           {
-//             latitude: latitude,
-//             longitude: longitude,
-//           },
-//         ],
-//       },
-//     });
-
-//     const newProperty = await prisma.property.create({
-//       data: {
-//         title,
-//         slug,
-//         price: parseFloat(price),
-//         address,
-//         city,
-//         state,
-//         zip,
-//         latitude,
-//         longitude,
-//         neighborhood,
-//         type,
-//         property,
-//         bedrooms: parseInt(bedrooms),
-//         bathrooms: parseInt(bathrooms),
-//         size: parseInt(size),
-//         lotSize: lotSize ? parseFloat(lotSize) : undefined,
-//         yearBuilt: yearBuilt ? parseInt(yearBuilt) : undefined,
-//         hoaFees: hoaFees ? parseInt(hoaFees) : undefined,
-//         leaseLength,
-//         furnished: furnished === "true",
-//         deposit: deposit ? parseFloat(deposit) : undefined,
-//         moveInDate: moveInDate ? new Date(moveInDate) : undefined,
-//         amenities: amenitiesArray || [],
-//         garage: garage === "true",
-//         basement: basement === "true",
-//         fireplace: fireplace === "true",
-//         pool: pool === "true",
-//         pet,
-//         utilities,
-//         income,
-//         school,
-//         bus,
-//         restaurant,
-//         description,
-//         listingStatus: "active",
-//         listingType: user?.role,
-//         userId,
-//         status:
-//           user?.role === "agent_broker" || user?.role === "property_manager"
-//             ? "approved"
-//             : "pending",
-//         userName: user?.username,
-//         userAvatar: user?.image,
-//         userEmail: user?.email,
-//         images: uploadedImages,
-//         flagStatus: existingProperty ? "approved" : "pending",
-//         flagged: existingProperty ? true : false,
-//         flagReason: existingProperty
-//           ? "Property data already exist. Duplicate property not allow!"
-//           : "",
-//         flaggedAt: existingProperty ? new Date() : null,
-//         reportedBy: existingProperty ? ["Reported by data created time."] : [],
-//       },
-//     });
-
-//     res.status(201).json({ success: true, data: newProperty });
-//   } catch (error) {
-//     console.error("Create property error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to create property",
-//       error: error.message,
-//     });
-//   }
-// };
-
 export const createProperty = async (req, res) => {
   try {
     const {
@@ -288,6 +111,8 @@ export const createProperty = async (req, res) => {
       basement,
       fireplace,
       pool,
+      isForeclosure,
+      isNewConstruction,
       pet,
       utilities,
       income,
@@ -423,6 +248,8 @@ export const createProperty = async (req, res) => {
         basement: basement === "true",
         fireplace: fireplace === "true",
         pool: pool === "true",
+        isForeclosure: isForeclosure === "true",
+        isNewConstruction: isNewConstruction === "true",
         pet,
         utilities,
         income,
@@ -504,6 +331,8 @@ export const updateProperty = async (req, res) => {
       basement,
       fireplace,
       pool,
+      isForeclosure,
+      isNewConstruction,
       pet,
       utilities,
       income,
@@ -615,6 +444,9 @@ export const updateProperty = async (req, res) => {
         basement: basement === "true" || basement === true,
         fireplace: fireplace === "true" || fireplace === true,
         pool: pool === "true" || pool === true,
+        isForeclosure: isForeclosure === "true" || isForeclosure === true,
+        isNewConstruction:
+          isNewConstruction === "true" || isNewConstruction === true,
         pet,
         utilities,
         income,
