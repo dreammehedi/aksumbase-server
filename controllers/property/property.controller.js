@@ -168,13 +168,13 @@ export const createProperty = async (req, res) => {
       where: { userId: user?.id },
     });
 
-    if (checkPackageActive.isExpired) {
+    if (checkPackageActive && checkPackageActive?.isExpired) {
       return res
         .status(404)
         .json({ success: false, message: "User package is expired." });
     }
 
-    if (checkPackageActive.useListing >= checkPackageActive.listingLimit) {
+    if (checkPackageActive?.useListing >= checkPackageActive?.listingLimit) {
       return res
         .status(404)
         .json({ success: false, message: "User package limit reached." });
