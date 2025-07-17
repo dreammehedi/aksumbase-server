@@ -806,6 +806,8 @@ export const getAllProperty = async (req, res) => {
     const search = req.query.search || "";
 
     const {
+      country,
+      address,
       city,
       state,
       zip,
@@ -835,6 +837,8 @@ export const getAllProperty = async (req, res) => {
             { zip: { contains: search, mode: "insensitive" } },
           ],
         },
+        address ? { address: { equals: address, mode: "insensitive" } } : {},
+        country ? { country: { equals: country, mode: "insensitive" } } : {},
         city ? { city: { equals: city, mode: "insensitive" } } : {},
         state ? { state: { equals: state, mode: "insensitive" } } : {},
         zip ? { zip: { equals: zip } } : {},
