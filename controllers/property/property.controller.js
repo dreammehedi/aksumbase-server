@@ -36,6 +36,7 @@ export const searchProperty = async (req, res) => {
       andConditions.push({
         OR: [
           { city: { contains: search, mode: "insensitive" } },
+          { country: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
           { zip: { contains: search, mode: "insensitive" } },
         ],
@@ -134,7 +135,14 @@ export const createProperty = async (req, res) => {
       !bedrooms ||
       !bathrooms ||
       !size ||
-      !description
+      !description ||
+      !country ||
+      !address ||
+      !city ||
+      !state ||
+      !zip ||
+      !latitude ||
+      !longitude
     ) {
       return res
         .status(400)
@@ -224,6 +232,7 @@ export const createProperty = async (req, res) => {
         title,
         slug,
         price: parseFloat(price),
+        country,
         address,
         city,
         state,
@@ -420,6 +429,7 @@ export const updateProperty = async (req, res) => {
         title,
         slug: slugify(title, { lower: true, strict: true }),
         price: parseFloat(price),
+        country,
         address,
         city,
         state,
@@ -705,6 +715,7 @@ export const getPropertyBySlug = async (req, res) => {
     const relevantProperties = await prisma.property.findMany({
       where: {
         id: { not: property.id },
+        country: property?.country || "",
         address: property?.address || "",
         city: property?.city || "",
         state: property?.state || "",
@@ -951,6 +962,7 @@ export const property = async (req, res) => {
     const search = req.query.search || "";
 
     const {
+      country,
       city,
       state,
       zip,
@@ -976,11 +988,13 @@ export const property = async (req, res) => {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
             { slug: { contains: search, mode: "insensitive" } },
+            { country: { contains: search, mode: "insensitive" } },
             { city: { contains: search, mode: "insensitive" } },
             { address: { contains: search, mode: "insensitive" } },
             { zip: { contains: search, mode: "insensitive" } },
           ],
         },
+        country ? { country: { equals: country, mode: "insensitive" } } : {},
         city ? { city: { equals: city, mode: "insensitive" } } : {},
         state ? { state: { equals: state, mode: "insensitive" } } : {},
         zip ? { zip: { equals: zip } } : {},
