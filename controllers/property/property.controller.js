@@ -88,6 +88,7 @@ export const createProperty = async (req, res) => {
     const {
       title,
       price,
+      country,
       address,
       city,
       state,
@@ -316,6 +317,7 @@ export const updateProperty = async (req, res) => {
       id,
       title,
       price,
+      country,
       address,
       city,
       state,
