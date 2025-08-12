@@ -671,3 +671,12 @@ model MortgageRate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// country
+model Country {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -31,6 +31,7 @@ import MortageToolsRouter from "./routes/home/mortageTools.route.js";
 import MortgageRateRouter from "./routes/loan-officer/mortgageRate.route.js";
 import BlogRouter from "./routes/other/blog.route.js";
 import ContactUserRouter from "./routes/other/contactUser.route.js";
+import CountryRouter from "./routes/other/country.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
 import FaqsRouter from "./routes/other/faqs.route.js";
 import GetEstimateRouter from "./routes/other/getEstimate.route.js";
@@ -220,6 +221,7 @@ app.use("/api", ContactUserRouter);
 app.use("/api", GetEstimateRouter);
 app.use("/api", FaqsRouter);
 app.use("/api", NewsletterRouter);
+app.use("/api", CountryRouter);
 
 // loan officer routes
 app.use("/api", MortgageRateRouter);
