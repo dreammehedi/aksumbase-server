@@ -121,21 +121,6 @@ DashboardRouter.put(
   "/admin/property-is-read-notifications/update-read",
   verifyToken,
   verifyAdminOld,
-  getAllProperty
-);
-
-DashboardRouter.get(
-  "/admin/property-is-read-notifications",
-  verifyToken,
-  verifyAdminOld,
-  paginationMiddleware,
-  getPropertyIsReadNotifications
-);
-
-DashboardRouter.put(
-  "/admin/property-is-read-notifications/update-read",
-  verifyToken,
-  verifyAdminOld,
   updatePropertyIsRead
 );
 

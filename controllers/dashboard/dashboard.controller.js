@@ -931,10 +931,7 @@ export const updatePropertyIsRead = async (req, res) => {
       data: { isRead: true },
     });
 
-    const unreadCount = await prisma.property.count({
-      where: { isRead: false },
-    });
-    res.json({ success: true, unreadCount });
+    res.json({ success: true });
   } catch (error) {
     console.error("Mark read error:", error);
     res.status(500).json({ success: false, message: "Failed to mark as read" });
