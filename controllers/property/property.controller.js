@@ -150,6 +150,15 @@ export const createProperty = async (req, res) => {
         .json({ success: false, message: "Missing required fields" });
     }
 
+    const avilableCountryData = await prisma.country.findMany();
+
+    const isCountryAvailable = avilableCountryData.some(
+      (c) => c.name.toLowerCase() === country.toLowerCase()
+    );
+
+    if (!isCountryAvailable) {
+      return res.status(403).json({ message: "Country is restricted" });
+    }
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
@@ -373,6 +382,16 @@ export const updateProperty = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Property not found" });
+    }
+
+    const avilableCountryData = await prisma.country.findMany();
+
+    const isCountryAvailable = avilableCountryData.some(
+      (c) => c.name.toLowerCase() === country.toLowerCase()
+    );
+
+    if (!isCountryAvailable) {
+      return res.status(403).json({ message: "Country is restricted" });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
