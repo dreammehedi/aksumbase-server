@@ -1,1 +1,1 @@
-Aksumbase Server Api
+Aksumbase Server
