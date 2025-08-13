@@ -893,6 +893,54 @@ export const getAllProperty = async (req, res) => {
   }
 };
 
+export const getPropertyIsReadNotifications = async (req, res) => {
+  const { skip = 0, limit = 10 } = req.pagination || {};
+  const notifications = await prisma.property.findMany({
+    where: { isRead: false },
+    orderBy: { createdAt: "desc" },
+    skip: Number(skip),
+    take: Number(limit),
+  });
+  const total = await prisma.property.count({
+    where: { isRead: false },
+  });
+  res.json({
+    success: true,
+    notifications,
+    pagination: { total, skip, limit },
+  });
+};
+
+export const updatePropertyIsRead = async (req, res) => {
+  const { ids } = req.body; // ["id1", "id2", ...]
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res
+      .status(400)
+      .json({ success: false, message: "IDs are required" });
+  }
+
+  try {
+    await prisma.property.updateMany({
+      where: {
+        id: {
+          in: ids,
+        },
+        isRead: false,
+      },
+      data: { isRead: true },
+    });
+
+    const unreadCount = await prisma.property.count({
+      where: { isRead: false },
+    });
+    res.json({ success: true, unreadCount });
+  } catch (error) {
+    console.error("Mark read error:", error);
+    res.status(500).json({ success: false, message: "Failed to mark as read" });
+  }
+};
+
 export const updateMultiplePropertyStatus = async (req, res) => {
   try {
     const { ids = [], status } = req.body;

@@ -14,6 +14,7 @@ import {
   getAllUsersByAdmin,
   getAllUsersSessionByAdmin,
   getPropertyByUser,
+  getPropertyIsReadNotifications,
   getSingleUserProfile,
   getUserRecentActivity,
   getUserReviews,
@@ -25,6 +26,7 @@ import {
   updateMultiplePropertyFlagged,
   updateMultiplePropertyStatus,
   updateMultiplePropertyTourStatus,
+  updatePropertyIsRead,
   updatePropertyRentStatus,
   updatePropertySoldStatus,
   userRequestPropertyContactUser,
@@ -105,6 +107,36 @@ DashboardRouter.get(
   verifyAdminOld,
   paginationMiddleware,
   getAllProperty
+);
+
+DashboardRouter.get(
+  "/admin/property-is-read-notifications",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getPropertyIsReadNotifications
+);
+
+DashboardRouter.put(
+  "/admin/property-is-read-notifications/update-read",
+  verifyToken,
+  verifyAdminOld,
+  getAllProperty
+);
+
+DashboardRouter.get(
+  "/admin/property-is-read-notifications",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getPropertyIsReadNotifications
+);
+
+DashboardRouter.put(
+  "/admin/property-is-read-notifications/update-read",
+  verifyToken,
+  verifyAdminOld,
+  updatePropertyIsRead
 );
 
 DashboardRouter.put(
