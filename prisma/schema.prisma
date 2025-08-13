@@ -391,6 +391,8 @@ model Property {
   type     PropertyType // buy, rent, sold
   property PropertyCategory // apartment, house, etc.
 
+  isRead  Boolean? @default(false)
+
   bedrooms    Int?
   bathrooms   Int?
   size        Int?

@@ -889,6 +889,38 @@ export const getAllProperty = async (req, res) => {
   }
 };
 
+export const getPropertyIsReadNotifications = async (req, res) => {
+  try {
+    // Get page and limit from query params, default to 1 and 10
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Fetch notifications with pagination
+    const notifications = await prisma.property.findMany({
+      where: { isRead: false },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    });
+
+    // Get total count of unread notifications
+    const total = await prisma.property.count({ where: { isRead: false } });
+
+    res.json({
+      success: true,
+      notifications,
+      total, // return total for frontend pagination
+    });
+  } catch (error) {
+    console.error("Get property notifications error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch notifications",
+    });
+  }
+};
+
 export const updateMultiplePropertyStatus = async (req, res) => {
   try {
     const { ids = [], status } = req.body;
