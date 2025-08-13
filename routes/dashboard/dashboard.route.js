@@ -25,6 +25,9 @@ import {
   renewRolePurchaseIntent,
   updateMultiplePropertyFlagged,
   updateMultiplePropertyStatus,
+  updateMultiplePropertyTourStatus,
+  updatePropertyIsRead,
+  updatePropertyRentStatus,
   updatePropertySoldStatus,
   userRequestPropertyContactUser,
   userRequestTour,
@@ -121,11 +124,32 @@ DashboardRouter.put(
   getAllProperty
 );
 
+DashboardRouter.get(
+  "/admin/property-is-read-notifications",
+  verifyToken,
+  verifyAdminOld,
+  paginationMiddleware,
+  getPropertyIsReadNotifications
+);
+
+DashboardRouter.put(
+  "/admin/property-is-read-notifications/update-read",
+  verifyToken,
+  verifyAdminOld,
+  updatePropertyIsRead
+);
+
 DashboardRouter.put(
   "/admin/property/update-status",
   verifyToken,
   verifyAdminOld,
   updateMultiplePropertyStatus
+);
+
+DashboardRouter.put(
+  "/user/property/update-tour-status",
+  verifyToken,
+  updateMultiplePropertyTourStatus
 );
 
 DashboardRouter.put(
@@ -168,11 +192,7 @@ DashboardRouter.get(
 );
 
 // user route
-DashboardRouter.get(
-  "/user/role-package-purchase",
-  verifyToken,
-  getUserRolePackagePurchase
-);
+DashboardRouter.get("/user/role-package-purchase", getUserRolePackagePurchase);
 
 DashboardRouter.get(
   "/user/property",
@@ -184,6 +204,12 @@ DashboardRouter.put(
   "/user/property/update-sold",
   verifyToken,
   updatePropertySoldStatus
+);
+
+DashboardRouter.put(
+  "/user/property/update-rent",
+  verifyToken,
+  updatePropertyRentStatus
 );
 
 DashboardRouter.post(

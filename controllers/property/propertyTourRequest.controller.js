@@ -86,6 +86,213 @@ const sendTourEmail = async ({
   });
 };
 
+// export const requestTour = async (req, res) => {
+//   try {
+//     const userId = req.userId;
+//     const userEmail = req.email;
+
+//     if (!userId || !userEmail) {
+//       return res
+//         .status(400)
+//         .json({ message: "User ID or Email not found in token." });
+//     }
+
+//     const { propertyId, name, phone, message, tourTimes } = req.body;
+
+//     if (
+//       !propertyId ||
+//       !name ||
+//       !phone ||
+//       !tourTimes ||
+//       tourTimes.length === 0
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "All fields are required including at least one tour time.",
+//       });
+//     }
+
+//     // const parseTourTimes = JSON.parse(tourTimes);
+
+//     const parseTourTimes =
+//       typeof tourTimes === "string" ? JSON.parse(tourTimes) : tourTimes;
+
+//     if (parseTourTimes.length > 3) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Maximum 3 time slots allowed.",
+//       });
+//     }
+
+//     const now = dayjs();
+//     const allowedTimes = [
+//       "09:00 AM",
+//       "09:30 AM",
+//       "10:00 AM",
+//       "10:30 AM",
+//       "11:00 AM",
+//       "11:30 AM",
+//       "12:00 PM",
+//       "12:30 PM",
+//       "01:00 PM",
+//       "01:30 PM",
+//       "02:00 PM",
+//       "02:30 PM",
+//       "03:00 PM",
+//       "03:30 PM",
+//       "04:00 PM",
+//       "04:30 PM",
+//       "05:00 PM",
+//       "05:30 PM",
+//       "06:00 PM",
+//       "06:30 PM",
+//       "07:00 PM",
+//     ];
+
+//     const seenSlots = new Set();
+
+//     for (const slot of parseTourTimes) {
+//       const key = `${slot.date}_${slot.time}`;
+
+//       if (seenSlots.has(key)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Duplicate time slot: ${slot.date} ${slot.time}`,
+//         });
+//       }
+//       seenSlots.add(key);
+
+//       const slotDate = dayjs(slot.date);
+//       if (!slotDate.isValid() || slotDate.isBefore(now, "day")) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Each selected date must be in the future.",
+//         });
+//       }
+
+//       if (!allowedTimes.includes(slot.time)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Invalid time slot selected: ${slot.time}`,
+//         });
+//       }
+//     }
+
+//     const existingUser = await prisma.user.findUnique({
+//       where: { id: userId },
+//     });
+//     if (!existingUser) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "User not found." });
+//     }
+//     const existingRequests = await prisma.propertyTourRequest.findMany({
+//       where: {
+//         userId,
+//         propertyId,
+//       },
+//       select: {
+//         tourTimes: true,
+//       },
+//     });
+
+//     let isDuplicate = false;
+
+//     for (const request of existingRequests) {
+//       for (const existingSlot of request.tourTimes || []) {
+//         for (const newSlot of parseTourTimes) {
+//           if (
+//             existingSlot.date === newSlot.date &&
+//             existingSlot.time === newSlot.time
+//           ) {
+//             isDuplicate = true;
+//             break;
+//           }
+//         }
+//         if (isDuplicate) break;
+//       }
+//     }
+
+//     if (isDuplicate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "You have already requested one or more of these tour slots.",
+//       });
+//     }
+
+//     const emailConfig = await prisma.emailConfiguration.findFirst();
+//     if (!emailConfig) {
+//       return res
+//         .status(500)
+//         .json({ success: false, message: "Email configuration missing." });
+//     }
+
+//     const decryptedPassword = decrypt(emailConfig.emailPassword);
+//     if (!decryptedPassword) {
+//       return res
+//         .status(500)
+//         .json({ success: false, message: "Failed to decrypt email password." });
+//     }
+
+//     const transporter = nodemailer.createTransport({
+//       service: "Gmail",
+//       auth: {
+//         user: emailConfig.emailAddress,
+//         pass: decryptedPassword,
+//       },
+//     });
+
+//     await prisma.propertyTourRequest.create({
+//       data: {
+//         userId,
+//         propertyId,
+//         name,
+//         email: userEmail,
+//         phone,
+//         message,
+//         tourTimes: parseTourTimes,
+//       },
+//     });
+//     const property = await prisma.property.findUnique({
+//       where: { id: propertyId },
+//       include: { user: true },
+//     });
+
+//     await sendTourEmail({
+//       transporter,
+//       to: userEmail,
+//       name,
+//       parseTourTimes,
+//       propertyId,
+//       property,
+//       isUser: true,
+//     });
+
+//     if (property?.user?.email) {
+//       await sendTourEmail({
+//         transporter,
+//         to: userEmail,
+//         name,
+//         parseTourTimes,
+//         propertyId,
+//         property,
+//         isUser: true,
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Tour request submitted successfully.",
+//     });
+//   } catch (error) {
+//     console.error("Tour Request Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Something went wrong while submitting the tour request.",
+//     });
+//   }
+// };
+
 export const requestTour = async (req, res) => {
   try {
     const userId = req.userId;
@@ -112,8 +319,7 @@ export const requestTour = async (req, res) => {
       });
     }
 
-    // const parseTourTimes = JSON.parse(tourTimes);
-
+    // Parse tour times safely
     const parseTourTimes =
       typeof tourTimes === "string" ? JSON.parse(tourTimes) : tourTimes;
 
@@ -178,6 +384,7 @@ export const requestTour = async (req, res) => {
       }
     }
 
+    // ✅ Validate user exists
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -186,6 +393,29 @@ export const requestTour = async (req, res) => {
         .status(400)
         .json({ success: false, message: "User not found." });
     }
+
+    // ✅ Validate property exists and is available
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      include: { user: true },
+    });
+
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: "The selected property does not exist.",
+      });
+    }
+
+    if (property.isSold || property.isRent) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot request a tour for a property that is already sold or rented.",
+      });
+    }
+
+    // ✅ Check for duplicate time slots
     const existingRequests = await prisma.propertyTourRequest.findMany({
       where: {
         userId,
@@ -197,7 +427,6 @@ export const requestTour = async (req, res) => {
     });
 
     let isDuplicate = false;
-
     for (const request of existingRequests) {
       for (const existingSlot of request.tourTimes || []) {
         for (const newSlot of parseTourTimes) {
@@ -220,18 +449,21 @@ export const requestTour = async (req, res) => {
       });
     }
 
+    // ✅ Email config and transporter
     const emailConfig = await prisma.emailConfiguration.findFirst();
     if (!emailConfig) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Email configuration missing." });
+      return res.status(500).json({
+        success: false,
+        message: "Email configuration missing.",
+      });
     }
 
     const decryptedPassword = decrypt(emailConfig.emailPassword);
     if (!decryptedPassword) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Failed to decrypt email password." });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to decrypt email password.",
+      });
     }
 
     const transporter = nodemailer.createTransport({
@@ -242,6 +474,7 @@ export const requestTour = async (req, res) => {
       },
     });
 
+    // ✅ Save request
     await prisma.propertyTourRequest.create({
       data: {
         userId,
@@ -253,11 +486,8 @@ export const requestTour = async (req, res) => {
         tourTimes: parseTourTimes,
       },
     });
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId },
-      include: { user: true },
-    });
 
+    // ✅ Send confirmation to user
     await sendTourEmail({
       transporter,
       to: userEmail,
@@ -268,15 +498,16 @@ export const requestTour = async (req, res) => {
       isUser: true,
     });
 
+    // ✅ Notify property owner
     if (property?.user?.email) {
       await sendTourEmail({
         transporter,
-        to: userEmail,
+        to: property.user.email,
         name,
         parseTourTimes,
         propertyId,
         property,
-        isUser: true,
+        isUser: false,
       });
     }
 
@@ -330,6 +561,7 @@ export const userRequestTour = async (req, res) => {
         message: true,
         tourTimes: true,
         propertyId: true,
+        status: true,
         createdAt: true,
         property: {
           select: {

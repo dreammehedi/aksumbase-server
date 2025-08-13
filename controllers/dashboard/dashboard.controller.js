@@ -806,6 +806,8 @@ export const getAllProperty = async (req, res) => {
     const search = req.query.search || "";
 
     const {
+      country,
+      address,
       city,
       state,
       zip,
@@ -835,6 +837,8 @@ export const getAllProperty = async (req, res) => {
             { zip: { contains: search, mode: "insensitive" } },
           ],
         },
+        address ? { address: { equals: address, mode: "insensitive" } } : {},
+        country ? { country: { equals: country, mode: "insensitive" } } : {},
         city ? { city: { equals: city, mode: "insensitive" } } : {},
         state ? { state: { equals: state, mode: "insensitive" } } : {},
         zip ? { zip: { equals: zip } } : {},
@@ -890,34 +894,50 @@ export const getAllProperty = async (req, res) => {
 };
 
 export const getPropertyIsReadNotifications = async (req, res) => {
+  const { skip = 0, limit = 10 } = req.pagination || {};
+  const notifications = await prisma.property.findMany({
+    where: { isRead: false },
+    orderBy: { createdAt: "desc" },
+    skip: Number(skip),
+    take: Number(limit),
+  });
+  const total = await prisma.property.count({
+    where: { isRead: false },
+  });
+  res.json({
+    success: true,
+    notifications,
+    pagination: { total, skip, limit },
+  });
+};
+
+export const updatePropertyIsRead = async (req, res) => {
+  const { ids } = req.body; // ["id1", "id2", ...]
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res
+      .status(400)
+      .json({ success: false, message: "IDs are required" });
+  }
+
   try {
-    // Get page and limit from query params, default to 1 and 10
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    await prisma.property.updateMany({
+      where: {
+        id: {
+          in: ids,
+        },
+        isRead: false,
+      },
+      data: { isRead: true },
+    });
 
-    // Fetch notifications with pagination
-    const notifications = await prisma.property.findMany({
+    const unreadCount = await prisma.property.count({
       where: { isRead: false },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
     });
-
-    // Get total count of unread notifications
-    const total = await prisma.property.count({ where: { isRead: false } });
-
-    res.json({
-      success: true,
-      notifications,
-      total, // return total for frontend pagination
-    });
+    res.json({ success: true, unreadCount });
   } catch (error) {
-    console.error("Get property notifications error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch notifications",
-    });
+    console.error("Mark read error:", error);
+    res.status(500).json({ success: false, message: "Failed to mark as read" });
   }
 };
 
@@ -953,6 +973,42 @@ export const updateMultiplePropertyStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update property status",
+    });
+  }
+};
+
+export const updateMultiplePropertyTourStatus = async (req, res) => {
+  try {
+    const { ids = [], status } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Property IDs are required.",
+      });
+    }
+
+    if (!["pending", "approved", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status provided.",
+      });
+    }
+
+    const updated = await prisma.propertyTourRequest.updateMany({
+      where: { id: { in: ids } },
+      data: { status },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${updated.count} properties tour request updated to "${status}"`,
+    });
+  } catch (error) {
+    console.error("Update property tour request status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update property tour request status",
     });
   }
 };
@@ -1007,88 +1063,6 @@ export const updateMultiplePropertyFlagged = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update property flagged status",
-    });
-  }
-};
-
-export const userRequestTour = async (req, res) => {
-  try {
-    const { skip = 0, limit = 10 } = req.pagination || {};
-    const search = req.query.search || "";
-    const filterDate = req.query.date;
-    const filterTime = req.query.time;
-
-    // Base Prisma filter (excluding tourTimes)
-    const where = {
-      AND: [
-        {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-          ],
-        },
-      ],
-    };
-
-    // Fetch all matching data (before tourTimes filtering)
-    const allRequests = await prisma.propertyTourRequest.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        message: true,
-        tourTimes: true,
-        propertyId: true,
-        createdAt: true,
-        property: {
-          select: {
-            title: true,
-            price: true,
-            address: true,
-            city: true,
-            state: true,
-            zip: true,
-            latitude: true,
-            longitude: true,
-            type: true,
-            bedrooms: true,
-            bathrooms: true,
-            size: true,
-            images: true,
-          },
-        },
-      },
-    });
-
-    // Filter by tourTimes.date and/or tourTimes.time
-    const filteredRequests = allRequests.filter((request) =>
-      request.tourTimes?.some((slot) => {
-        const matchDate = filterDate ? slot.date === filterDate : true;
-        const matchTime = filterTime ? slot.time === filterTime : true;
-        return matchDate && matchTime;
-      })
-    );
-
-    // Paginate filtered data
-    const paginated = filteredRequests.slice(skip, skip + limit);
-
-    res.status(200).json({
-      success: true,
-      data: paginated,
-      pagination: {
-        total: filteredRequests.length,
-        skip: Number(skip),
-        limit: Number(limit),
-      },
-    });
-  } catch (error) {
-    console.error("User tour request fetch error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch user tour requests",
     });
   }
 };
@@ -1201,7 +1175,9 @@ export const getAllUserRoleApplications = async (req, res) => {
               id: true,
               name: true,
               durationDays: true,
-              price: true,
+              listingLimit: true,
+              singleListingPrice: true,
+              totalPrice: true,
               roleName: true,
             },
           },
@@ -1264,20 +1240,17 @@ export const getAdminRolePackage = async (req, res) => {
 
 // user controller
 export const getUserRolePackagePurchase = async (req, res) => {
-  const userId = req.userId;
-
-  if (!userId) {
-    return res.status(401).json({ error: "Unauthorized access." });
-  }
+  const userId = req?.query?.userId;
 
   try {
-    // Fetch in parallel
-    const [allPackages, userRole] = await Promise.all([
-      prisma.rolePackage.findMany({
-        where: { status: "active" },
-        orderBy: { price: "asc" }, // Optional: sort packages by price or name
-      }),
-      prisma.userRole.findFirst({
+    const allPackagesPromise = prisma.rolePackage.findMany({
+      where: { status: "active" },
+    });
+
+    let userRolePromise = Promise.resolve(null); // default if no userId
+
+    if (userId) {
+      userRolePromise = prisma.userRole.findFirst({
         where: { userId },
         orderBy: { createdAt: "desc" },
         include: {
@@ -1296,7 +1269,9 @@ export const getUserRolePackagePurchase = async (req, res) => {
               id: true,
               name: true,
               durationDays: true,
-              price: true,
+              singleListingPrice: true,
+              totalPrice: true,
+              listingLimit: true,
               roleName: true,
               features: true,
             },
@@ -1311,18 +1286,32 @@ export const getUserRolePackagePurchase = async (req, res) => {
               stripeId: true,
               createdAt: true,
               status: true,
+              durationDays: true,
+              listingLimit: true,
             },
           },
         },
-      }),
+      });
+    }
+
+    const [allPackages, userRole] = await Promise.all([
+      allPackagesPromise,
+      userRolePromise,
     ]);
 
-    res.status(200).json({
-      message: "Fetched role packages and user purchase successfully.",
-      success: true,
-      allPackages,
-      userPurchase: userRole || null,
-    });
+    if (userId) {
+      res.status(200).json({
+        message: "Fetched user purchase successfully.",
+        success: true,
+        userPurchase: userRole,
+      });
+    } else {
+      res.status(200).json({
+        message: "Fetched role packages and user purchase successfully.",
+        success: true,
+        allPackages,
+      });
+    }
   } catch (error) {
     console.error(
       "Error fetching role packages or user purchase:",
@@ -1360,6 +1349,7 @@ export const getPropertyByUser = async (req, res) => {
       listingStatus,
       amenities,
       isSold,
+      isRent,
     } = req.query;
 
     const where = {
@@ -1389,6 +1379,7 @@ export const getPropertyByUser = async (req, res) => {
         garage !== undefined ? { garage: garage === "true" } : {},
         pool !== undefined ? { pool: pool === "true" } : {},
         isSold !== undefined ? { isSold: isSold === "true" } : {},
+        isRent !== undefined ? { isRent: isRent === "true" } : {},
         amenities
           ? {
               amenities: {
@@ -1455,14 +1446,27 @@ export const renewRolePurchaseIntent = async (req, res) => {
   try {
     const stripe = await stripeConfig();
     const userId = req.userId;
-    const { rolePackageId, currency = "usd", metadata = {} } = req.body;
+    const {
+      rolePackageId,
+      durationDays,
+      currency = "usd",
+      metadata = {},
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized user." });
     }
 
-    if (!rolePackageId) {
-      return res.status(400).json({ error: "rolePackageId is required." });
+    if (!rolePackageId || !durationDays) {
+      return res
+        .status(400)
+        .json({ error: "Required fields: rolePackageId, durationDays." });
+    }
+    // Validate durationDays
+    if (durationDays < 30) {
+      return res
+        .status(400)
+        .json({ error: "DurationDays must be a positive number." });
     }
 
     // 🔎 Get current package details
@@ -1470,7 +1474,7 @@ export const renewRolePurchaseIntent = async (req, res) => {
       where: { id: rolePackageId },
     });
 
-    if (!rolePackage || !rolePackage.price) {
+    if (!rolePackage || !rolePackage.totalPrice) {
       return res.status(404).json({ error: "Role package not found." });
     }
 
@@ -1489,6 +1493,8 @@ export const renewRolePurchaseIntent = async (req, res) => {
         error: "No expired role found for this package. Cannot renew.",
       });
     }
+    const singleMonth = durationDays / 30;
+    const totalListings = rolePackage.listingLimit * singleMonth;
 
     // ✅ Create Stripe Checkout session with current package price
     const session = await stripe.checkout.sessions.create({
@@ -1503,7 +1509,7 @@ export const renewRolePurchaseIntent = async (req, res) => {
               name: rolePackage.name,
               description: rolePackage.roleName,
             },
-            unit_amount: Math.round(rolePackage.price * 100), // Convert to cents
+            unit_amount: Math.round(rolePackage.totalPrice * singleMonth * 100), // Convert to cents
           },
           quantity: 1,
         },
@@ -1512,6 +1518,8 @@ export const renewRolePurchaseIntent = async (req, res) => {
         userId,
         rolePackageId,
         renewUserRoleId: expiredRole.id, // Pass expired role ID to update later
+        durationDays,
+        totalListings,
         ...metadata,
       },
       invoice_creation: { enabled: true },
@@ -1656,6 +1664,9 @@ export const getUserRecentActivity = async (req, res) => {
         where: {
           userId,
           createdAt: { gte: sevenDaysAgo },
+          property: {
+            isNot: null,
+          },
         },
         orderBy: { createdAt: "desc" },
         include: {
@@ -1681,11 +1692,167 @@ export const getUserRecentActivity = async (req, res) => {
   }
 };
 
+// export const getUsersByRole = async (req, res) => {
+//   const { role, search = "", address, city, state, zipCode,phone, email } = req.query;
+//   const { skip = 0, limit = 20 } = req.pagination || {};
+
+//   // Block invalid or unauthorized roles
+//   if (!role || ["user", "admin"].includes(role)) {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Invalid or unauthorized role.",
+//     });
+//   }
+
+//   let rolesToQuery = [role];
+
+//   // Map 'other_professionals' to multiple roles
+//   if (role === "other_professionals") {
+//     rolesToQuery = ["homeowner_landlord", "property_manager"];
+//   }
+
+//   try {
+//     const users = await prisma.user.findMany({
+//       where: {
+//         role: { in: rolesToQuery },
+//         OR: [
+//           { email: { contains: search, mode: "insensitive" } },
+//           { address: { contains: search, mode: "insensitive" } },
+//           { city: { contains: search, mode: "insensitive" } },
+//           { state: { contains: search, mode: "insensitive" } },
+//           { zipCode: { contains: search, mode: "insensitive" } },
+//         ],
+//       },
+//       select: {
+//         id: true,
+//         username: true,
+//         email: true,
+//         phone: true,
+//         role: true,
+//         bio: true,
+//         address: true,
+//         city: true,
+//         state: true,
+//         zipCode: true,
+//         avatar: true,
+//         userRoles: {
+//           where: { isActive: true },
+//           orderBy: { startDate: "asc" },
+//           take: 1,
+//           select: {
+//             id: true,
+//             startDate: true,
+//             endDate: true,
+//             isActive: true,
+//             isExpired: true,
+//             isPaused: true,
+//           },
+//         },
+//         reviewsReceived: {
+//           include: {
+//             reviewer: {
+//               select: {
+//                 id: true,
+//                 username: true,
+//                 avatar: true,
+//                 email: true,
+//                 phone: true,
+//                 address: true,
+//                 city: true,
+//                 state: true,
+//                 zipCode: true,
+//               },
+//             },
+//           },
+//         },
+//       },
+//       skip: Number(skip),
+//       take: Number(limit),
+//     });
+
+//     const filtered = users
+//       .map((user) => {
+//         const reviews = user.reviewsReceived || [];
+//         const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+//         const averageRating = reviews.length
+//           ? (totalRating / reviews.length).toFixed(1)
+//           : null;
+
+//         return {
+//           id: user.id,
+//           username: user.username,
+//           email: user.email,
+//           phone: user.phone,
+//           role: user.role,
+//           bio: user.bio,
+//           address: user.address,
+//           city: user.city,
+//           state: user.state,
+//           zipCode: user.zipCode,
+//           avatar: user.avatar,
+//           userRole: user.userRoles[0] || null,
+//           averageRating,
+//           totalReviews: reviews.length,
+//           reviews,
+//         };
+//       })
+//       .sort((a, b) => {
+//         const aActive = a.userRole?.isActive;
+//         const bActive = b.userRole?.isActive;
+
+//         if (aActive && !bActive) return -1;
+//         if (!aActive && bActive) return 1;
+
+//         const dateA = new Date(a.userRole?.startDate || 0);
+//         const dateB = new Date(b.userRole?.startDate || 0);
+//         return dateA - dateB;
+//       });
+
+//     const total = await prisma.user.count({
+//       where: {
+//         role: { in: rolesToQuery },
+//         OR: [
+//           { email: { contains: search, mode: "insensitive" } },
+//           { address: { contains: search, mode: "insensitive" } },
+//           { city: { contains: search, mode: "insensitive" } },
+//           { state: { contains: search, mode: "insensitive" } },
+//           { zipCode: { contains: search, mode: "insensitive" } },
+//         ],
+//       },
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       role,
+//       data: filtered,
+//       pagination: {
+//         total,
+//         skip: Number(skip),
+//         limit: Number(limit),
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error fetching users by role:", error.message);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to get users by role.",
+//     });
+//   }
+// };
+
 export const getUsersByRole = async (req, res) => {
-  const { role, search = "" } = req.query;
+  const {
+    role,
+    search = "",
+    address,
+    city,
+    state,
+    zipCode,
+    phone,
+    email,
+  } = req.query;
   const { skip = 0, limit = 20 } = req.pagination || {};
 
-  // Block invalid or unauthorized roles
   if (!role || ["user", "admin"].includes(role)) {
     return res.status(403).json({
       success: false,
@@ -1695,23 +1862,36 @@ export const getUsersByRole = async (req, res) => {
 
   let rolesToQuery = [role];
 
-  // Map 'other_professionals' to multiple roles
   if (role === "other_professionals") {
     rolesToQuery = ["homeowner_landlord", "property_manager"];
   }
 
+  // Dynamic filter building
+  const filters = {
+    role: { in: rolesToQuery },
+
+    ...(search && {
+      OR: [
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
+        { state: { contains: search, mode: "insensitive" } },
+        { zipCode: { contains: search, mode: "insensitive" } },
+      ],
+    }),
+
+    ...(email && { email: { contains: email, mode: "insensitive" } }),
+    ...(phone && { phone: { contains: phone, mode: "insensitive" } }),
+    ...(address && { address: { contains: address, mode: "insensitive" } }),
+    ...(city && { city: { contains: city, mode: "insensitive" } }),
+    ...(state && { state: { contains: state, mode: "insensitive" } }),
+    ...(zipCode && { zipCode: { contains: zipCode, mode: "insensitive" } }),
+  };
+
   try {
     const users = await prisma.user.findMany({
-      where: {
-        role: { in: rolesToQuery },
-        OR: [
-          { email: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
-          { city: { contains: search, mode: "insensitive" } },
-          { state: { contains: search, mode: "insensitive" } },
-          { zipCode: { contains: search, mode: "insensitive" } },
-        ],
-      },
+      where: filters,
       select: {
         id: true,
         username: true,
@@ -1797,18 +1977,7 @@ export const getUsersByRole = async (req, res) => {
         return dateA - dateB;
       });
 
-    const total = await prisma.user.count({
-      where: {
-        role: { in: rolesToQuery },
-        OR: [
-          { email: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
-          { city: { contains: search, mode: "insensitive" } },
-          { state: { contains: search, mode: "insensitive" } },
-          { zipCode: { contains: search, mode: "insensitive" } },
-        ],
-      },
-    });
+    const total = await prisma.user.count({ where: filters });
 
     res.status(200).json({
       success: true,
@@ -1983,56 +2152,92 @@ export const getUserStatisticsOverview = async (req, res) => {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   try {
-    const [pendingCount, activeCount, soldProperties, recentSales] =
-      await Promise.all([
-        // Count of pending listings
-        prisma.property.count({
-          where: {
-            userId,
-            status: "pending",
-          },
-        }),
+    const [
+      pendingCount,
+      activeCount,
+      soldProperties,
+      recentSales,
+      rentProperties,
+      recentRented,
+    ] = await Promise.all([
+      // Count of pending listings
+      prisma.property.count({
+        where: {
+          userId,
+          status: "pending",
+        },
+      }),
 
-        // Count of active listings
-        prisma.property.count({
-          where: {
-            userId,
-            status: "approved",
-            isSold: false,
-          },
-        }),
+      // Count of active listings
+      prisma.property.count({
+        where: {
+          userId,
+          status: "approved",
+          isSold: false,
+          isRent: false,
+        },
+      }),
 
-        // All sold properties for user
-        prisma.property.findMany({
-          where: {
-            userId,
-            isSold: true,
-            type: "buy",
-          },
-          select: {
-            soldPrice: true,
-            soldAt: true,
-          },
-        }),
+      // All sold properties for user
+      prisma.property.findMany({
+        where: {
+          userId,
+          isSold: true,
+          type: "buy",
+        },
+        select: {
+          soldPrice: true,
+          soldAt: true,
+        },
+      }),
 
-        // Recent sold properties (latest 5)
-        prisma.property.findMany({
-          where: {
-            userId,
-            isSold: true,
-          },
-          orderBy: {
-            soldAt: "desc",
-          },
-          take: 5,
-        }),
-      ]);
+      // Recent sold properties (latest 5)
+      prisma.property.findMany({
+        where: {
+          userId,
+          isSold: true,
+        },
+        orderBy: {
+          soldAt: "desc",
+        },
+        take: 5,
+      }),
+
+      // All rent properties for user
+      prisma.property.findMany({
+        where: {
+          userId,
+          isRent: true,
+          type: "rent",
+        },
+        select: {
+          rentPrice: true,
+          rentAt: true,
+        },
+      }),
+
+      // Recent rent properties (latest 5)
+      prisma.property.findMany({
+        where: {
+          userId,
+          isRent: true,
+        },
+        orderBy: {
+          rentAt: "desc",
+        },
+        take: 5,
+      }),
+    ]);
 
     const totalRevenue = soldProperties.reduce(
       (sum, prop) => sum + (prop.soldPrice || 0),
       0
     );
 
+    const totalRentRevenue = rentProperties.reduce(
+      (sum, prop) => sum + (prop.rentPrice || 0),
+      0
+    );
     res.status(200).json({
       success: true,
       data: {
@@ -2041,6 +2246,8 @@ export const getUserStatisticsOverview = async (req, res) => {
         soldCount: soldProperties.length, // total sold count
         totalRevenue, // total revenue from soldPrice
         recentSales, // latest 5 sold properties
+        totalRentRevenue, // total revenue from rentPrice
+        recentRented, // latest 5 rent properties
       },
     });
   } catch (error) {
@@ -2054,9 +2261,10 @@ export const getUserStatisticsOverview = async (req, res) => {
 
 export const updatePropertySoldStatus = async (req, res, next) => {
   try {
-    const { id, soldPrice, soldAt, soldFeedback } = req.body;
+    const { id, soldPrice, soldFeedback } = req.body;
     const userId = req.userId;
     const isSold = true;
+
     // 1. Check if ID is provided
     if (!id) {
       return res.status(400).json({
@@ -2065,15 +2273,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 2. Validate isSold
-    // if (typeof isSold !== "boolean") {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "isSold must be a boolean (true/false).",
-    //   });
-    // }
-
-    // 3. Check if user exists
+    // 2. Check if user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -2085,7 +2285,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 4. Check if property exists and belongs to the user (optional: enforce ownership)
+    // 3. Check if property exists
     const property = await prisma.property.findUnique({
       where: { id },
     });
@@ -2097,7 +2297,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // Optional: Check if property belongs to the user
+    // 4. Check if property belongs to the user
     if (property.userId !== userId) {
       return res.status(403).json({
         success: false,
@@ -2105,7 +2305,7 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 5. Validate property status
+    // 5. Check if property is approved
     if (property.status !== "approved") {
       return res.status(400).json({
         success: false,
@@ -2113,15 +2313,23 @@ export const updatePropertySoldStatus = async (req, res, next) => {
       });
     }
 
-    // 6. Build update data
+    // 6. Ensure only 'buy' type properties can be sold
+    if (property.type !== "buy") {
+      return res.status(400).json({
+        success: false,
+        message: "Only properties listed for 'buy' can be marked as sold.",
+      });
+    }
+
+    // 7. Build update data
     const updateData = {
       isSold,
       soldPrice: parseInt(soldPrice),
       soldAt: new Date(),
-      soldFeedback: soldFeedback,
+      soldFeedback,
     };
 
-    // 7. Update property
+    // 8. Update property
     const updatedProperty = await prisma.property.update({
       where: { id },
       data: updateData,
@@ -2129,11 +2337,181 @@ export const updatePropertySoldStatus = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: `Property marked as ${isSold ? "sold" : "unsold"}.`,
+      message: `Property marked as sold.`,
       data: updatedProperty,
     });
   } catch (error) {
     console.error("Update property sold status error:", error);
     return next(createError(500, "Failed to update sold status"));
+  }
+};
+
+export const updatePropertyRentStatus = async (req, res, next) => {
+  try {
+    const { id, rentPrice, rentFeedback } = req.body;
+    const userId = req.userId;
+    const isRent = true;
+
+    // 1. Check if ID is provided
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Property ID is required.",
+      });
+    }
+
+    // 2. Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // 3. Check if property exists
+    const property = await prisma.property.findUnique({
+      where: { id },
+    });
+
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: "Property not found.",
+      });
+    }
+
+    // 4. Check if property belongs to the user
+    if (property.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this property.",
+      });
+    }
+
+    // 5. Check if property is approved
+    if (property.status !== "approved") {
+      return res.status(400).json({
+        success: false,
+        message: "Only approved properties can be marked as rented.",
+      });
+    }
+
+    // 6. Ensure only 'rent' type properties can be rented
+    if (property.type !== "rent") {
+      return res.status(400).json({
+        success: false,
+        message: "Only properties listed for 'rent' can be marked as rented.",
+      });
+    }
+
+    // 7. Build update data
+    const updateData = {
+      isRent,
+      rentPrice: parseInt(rentPrice),
+      rentAt: new Date(),
+      rentFeedback,
+    };
+
+    // 8. Update property
+    const updatedProperty = await prisma.property.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Property marked as rent.`,
+      data: updatedProperty,
+    });
+  } catch (error) {
+    console.error("Update property rent status error:", error);
+    return next(createError(500, "Failed to update rent status"));
+  }
+};
+
+export const userRequestTour = async (req, res) => {
+  try {
+    const { skip = 0, limit = 10 } = req.pagination || {};
+    const search = req.query.search || "";
+    const filterDate = req.query.date;
+    const filterTime = req.query.time;
+
+    // Base Prisma filter (excluding tourTimes)
+    const where = {
+      AND: [
+        {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      ],
+    };
+
+    // Fetch all matching data (before tourTimes filtering)
+    const allRequests = await prisma.propertyTourRequest.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        message: true,
+        tourTimes: true,
+        status: true,
+        propertyId: true,
+        createdAt: true,
+        property: {
+          select: {
+            title: true,
+            price: true,
+            address: true,
+            city: true,
+            state: true,
+            zip: true,
+            latitude: true,
+            longitude: true,
+            type: true,
+            bedrooms: true,
+            bathrooms: true,
+            size: true,
+            images: true,
+          },
+        },
+      },
+    });
+
+    // Filter by tourTimes.date and/or tourTimes.time
+    const filteredRequests = allRequests.filter((request) =>
+      request.tourTimes?.some((slot) => {
+        const matchDate = filterDate ? slot.date === filterDate : true;
+        const matchTime = filterTime ? slot.time === filterTime : true;
+        return matchDate && matchTime;
+      })
+    );
+
+    // Paginate filtered data
+    const paginated = filteredRequests.slice(skip, skip + limit);
+
+    res.status(200).json({
+      success: true,
+      data: paginated,
+      pagination: {
+        total: filteredRequests.length,
+        skip: Number(skip),
+        limit: Number(limit),
+      },
+    });
+  } catch (error) {
+    console.error("User tour request fetch error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user tour requests",
+    });
   }
 };

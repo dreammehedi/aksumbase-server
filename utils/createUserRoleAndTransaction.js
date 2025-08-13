@@ -4,7 +4,8 @@ import prisma from "../lib/prisma.js";
 
 // role package purchase stripe webhook & transation
 export const createUserRoleAndTransaction = async (session) => {
-  const { userId, rolePackageId } = session.metadata;
+  const { userId, rolePackageId, durationDays, totalListings } =
+    session.metadata;
   const stripeId = session.id;
   const amount = session.amount_total / 100;
   const currency = session.currency;
@@ -38,6 +39,8 @@ export const createUserRoleAndTransaction = async (session) => {
       isPaused: false,
       isExpired: false,
       isVerified: false,
+      durationDays: parseInt(durationDays) || 0,
+      listingLimit: parseInt(totalListings) || 0,
     },
   });
 
@@ -52,6 +55,9 @@ export const createUserRoleAndTransaction = async (session) => {
       method: paymentMethod,
       stripeId,
       invoiceUrl,
+      isTransactionPurchase: true,
+      durationDays: parseInt(durationDays) || 0,
+      listingLimit: parseInt(totalListings) || 0,
     },
   });
 
@@ -60,9 +66,13 @@ export const createUserRoleAndTransaction = async (session) => {
 
 // role package renew purchase stripe webhook & transation
 export const createRenewUserRoleAndTransaction = async (session) => {
-  const userId = session.metadata.userId;
-  const rolePackageId = session.metadata.rolePackageId;
-  const renewUserRoleId = session.metadata.renewUserRoleId;
+  const {
+    userId,
+    rolePackageId,
+    renewUserRoleId,
+    durationDays,
+    totalListings,
+  } = session.metadata;
 
   const stripeId = session.id;
   const amount = session.amount_total / 100;
@@ -101,6 +111,9 @@ export const createRenewUserRoleAndTransaction = async (session) => {
         isExpired: false,
         isActive: true,
         isPaused: false,
+        durationDays: parseInt(durationDays) || 0,
+        listingLimit: parseInt(totalListings) || 0,
+        useListing: 0,
       },
     });
 
@@ -123,6 +136,9 @@ export const createRenewUserRoleAndTransaction = async (session) => {
         method: paymentMethod,
         stripeId,
         invoiceUrl,
+        isTransactionPurchase: false,
+        durationDays: parseInt(durationDays) || 0,
+        listingLimit: parseInt(totalListings) || 0,
       },
     });
 

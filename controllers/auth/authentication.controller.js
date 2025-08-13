@@ -236,11 +236,12 @@ export const registerAdmin = async (req, res) => {
     });
   }
 };
+
 export const deleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check super_admin permission
+    // 1. Only super_admin can delete admins
     if (req.role !== "super_admin") {
       return res.status(403).json({
         success: false,
@@ -248,6 +249,7 @@ export const deleteAdmin = async (req, res) => {
       });
     }
 
+    // 2. Prevent deleting own account
     if (req.user?.id === id) {
       return res.status(403).json({
         success: false,
@@ -255,6 +257,7 @@ export const deleteAdmin = async (req, res) => {
       });
     }
 
+    // 3. Find target user
     const targetUser = await prisma.user.findUnique({ where: { id } });
 
     if (!targetUser) {
@@ -271,48 +274,47 @@ export const deleteAdmin = async (req, res) => {
       });
     }
 
-    // ✅ Delete all related records
-    await prisma.notification.deleteMany({ where: { userId: id } });
-    await prisma.userRole.deleteMany({ where: { userId: id } });
-    await prisma.session.deleteMany({ where: { userId: id } });
-    await prisma.bookmark.deleteMany({ where: { userId: id } });
-    await prisma.propertyView.deleteMany({ where: { userId: id } });
-    await prisma.propertyTourRequest.deleteMany({ where: { userId: id } });
-    await prisma.propertyContactUserRequest.deleteMany({
-      where: { userId: id },
-    });
-    await prisma.transaction.deleteMany({ where: { userId: id } });
+    // 4. Delete related records
+    await Promise.all([
+      prisma.notification.deleteMany({ where: { userId: id } }),
+      prisma.userRole.deleteMany({ where: { userId: id } }),
+      prisma.session.deleteMany({ where: { userId: id } }),
+      prisma.bookmark.deleteMany({ where: { userId: id } }),
+      prisma.propertyView.deleteMany({ where: { userId: id } }),
+      prisma.propertyTourRequest.deleteMany({ where: { userId: id } }),
+      prisma.propertyContactUserRequest.deleteMany({ where: { userId: id } }),
+      prisma.transaction.deleteMany({ where: { userId: id } }),
+      prisma.property.deleteMany({ where: { userId: id } }),
+      prisma.review.deleteMany({
+        where: {
+          OR: [{ reviewerId: id }, { targetUserId: id }],
+        },
+      }),
+    ]);
 
-    // ✅ Delete properties listed by this user
-    await prisma.property.deleteMany({ where: { userId: id } });
-
-    // ✅ Delete reviews by and for this user
-    await prisma.review.deleteMany({
-      where: {
-        OR: [{ reviewerId: id }, { reviewedUserId: id }],
-      },
-    });
-
-    // ✅ Finally, delete the user
+    // 5. Delete the user
     await prisma.user.delete({ where: { id } });
 
-    // ✅ Notify by email
+    // 6. Send email notification
     await sendEmail({
       to: targetUser.email,
       subject: "Your Admin Account Has Been Deleted",
       html: `
-        <h2>Account Deleted</h2>
-        <p>Dear ${targetUser.username || "Admin"},</p>
-        <p>Your admin account for <strong>AksumBase</strong> has been deleted by a super admin.</p>
-        <p>If you believe this was a mistake, please contact system support.</p>
-        <br />
-        <p>Regards,<br/>AksumBase Team</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <h2 style="color: #d9534f;">Account Deleted</h2>
+          <p>Dear ${targetUser.username || "Admin"},</p>
+          <p>Your admin account for <strong>AksumBase</strong> has been <strong>deleted</strong> by a super admin.</p>
+          <p>If you believe this was a mistake, please contact our support team immediately.</p>
+          <br />
+          <p>Best regards,<br/>The AksumBase Team</p>
+        </div>
       `,
     });
 
+    // 7. Response
     res.status(200).json({
       success: true,
-      message: "Admin account and related data deleted successfully.",
+      message: "Admin account and all related data deleted successfully.",
     });
   } catch (error) {
     console.error("Delete Admin Error:", error);
@@ -335,7 +337,9 @@ export const loginUser = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found." });
 
     if (user.status !== "active")
-      return res.status(403).json({ message: `Account is ${user.status}.` });
+      return res.status(403).json({
+        message: `Your AksumBase account has been ${user.status} by an administrator. If you believe this was a mistake, please contact support.`,
+      });
 
     // const isAdmin = email === "admin@gmail.com";
     // const passwordMatch = isAdmin
@@ -1074,5 +1078,97 @@ export const getUserProfile = async (req, res, next) => {
       message:
         error.message || "An error occurred while fetching the user profile.",
     });
+  }
+};
+
+export const toggleUserStatus = async (req, res) => {
+  const { status, userId } = req.body;
+  const adminId = req.userId;
+  const adminRole = req.role;
+
+  // Admin access check
+  if (!adminId || (adminRole !== "admin" && adminRole !== "super_admin")) {
+    return res.status(403).json({ error: "Access denied. Admins only." });
+  }
+
+  // Input validation
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required!" });
+  }
+
+  if (!["active", "inactive"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status!" });
+  }
+
+  try {
+    // Fetch target user
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { sessions: true },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found!" });
+    }
+
+    // Prevent self-action
+    if (adminId === userId) {
+      return res
+        .status(400)
+        .json({ error: "You cannot change your own status." });
+    }
+
+    // Prevent action on other admins
+    if (targetUser.role === adminRole) {
+      return res
+        .status(400)
+        .json({ error: "You cannot access another admin account." });
+    }
+
+    // Update user status
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { status },
+    });
+
+    // Remove sessions if inactive
+    if (status === "inactive") {
+      await prisma.session.deleteMany({ where: { userId } });
+    }
+
+    // Send styled email notification
+    await sendEmail({
+      to: targetUser.email,
+      subject: `Your AksumBase Account Has Been ${
+        status === "inactive" ? "In-Active" : "Activated"
+      }`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
+          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-radius: 8px;">
+            <h2 style="color: #4C924D; margin-bottom: 20px;">Account Status Updated</h2>
+            <p style="font-size: 15px; color: #333;">Dear ${
+              targetUser.username
+            },</p>
+            <p style="font-size: 15px; color: #333;">
+              Your AksumBase account has been <strong style="text-transform: uppercase;">${status}</strong> by an administrator.
+            </p>
+            ${
+              status === "inactive"
+                ? `<p style="font-size: 15px; color: #333;">If you believe this was a mistake, please contact support.</p>`
+                : `<p style="font-size: 15px; color: #333;">You may now log in and continue using your account as usual.</p>`
+            }
+            <p style="font-size: 15px; color: #333;">Thank you,<br><strong>The AksumBase Team</strong></p>
+          </div>
+        </div>
+      `,
+    });
+
+    return res.json({
+      message: `User status updated to ${status} and email sent.`,
+      user: updatedUser,
+    });
+  } catch (err) {
+    console.error("Status update error:", err);
+    return res.status(500).json({ error: "Something went wrong!" });
   }
 };

@@ -9,20 +9,32 @@ import {
 export const createRolePurchaseIntent = async (req, res) => {
   try {
     const stripe = await stripeConfig();
-    const { rolePackageId, currency = "usd", metadata = {} } = req.body;
+    const {
+      rolePackageId,
+      durationDays,
+      currency = "usd",
+      metadata = {},
+    } = req.body;
     const userId = req.userId;
 
     if (!userId) return res.status(401).json({ message: "Unauthorized user." });
 
-    if (!rolePackageId) {
-      return res.status(400).json({ error: "Required field: rolePackageId." });
+    if (!rolePackageId || !durationDays) {
+      return res
+        .status(400)
+        .json({ error: "Required fields: rolePackageId, durationDays." });
     }
-
+    // Validate durationDays
+    if (durationDays < 30) {
+      return res
+        .status(400)
+        .json({ error: "DurationDays must be a positive number." });
+    }
     const rolePackage = await prisma.rolePackage.findUnique({
       where: { id: rolePackageId },
     });
 
-    if (!rolePackage || !rolePackage.price) {
+    if (!rolePackage || !rolePackage.totalPrice) {
       return res.status(404).json({ error: "Role package not found." });
     }
 
@@ -35,11 +47,13 @@ export const createRolePurchaseIntent = async (req, res) => {
         error: "You already have an active or pending role package.",
       });
     }
+    const singleMonth = durationDays / 30;
+    const totalListings = rolePackage.listingLimit * singleMonth;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      customer_email: req.userEmail, // optional, if you have user's email
+      customer_email: req.userEmail,
       line_items: [
         {
           price_data: {
@@ -48,7 +62,7 @@ export const createRolePurchaseIntent = async (req, res) => {
               name: rolePackage.name,
               description: rolePackage.roleName,
             },
-            unit_amount: Math.round(rolePackage.price * 100),
+            unit_amount: Math.round(rolePackage.totalPrice * singleMonth * 100),
           },
           quantity: 1,
         },
@@ -56,9 +70,11 @@ export const createRolePurchaseIntent = async (req, res) => {
       metadata: {
         userId,
         rolePackageId,
+        durationDays,
+        totalListings,
         ...metadata,
       },
-      invoice_creation: { enabled: true }, // ✅ Enable invoice
+      invoice_creation: { enabled: true },
       success_url: `${process.env.FRONTEND_LINK}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_LINK}/payment-cancelled`,
     });
@@ -81,10 +97,7 @@ export const createRolePurchaseIntent = async (req, res) => {
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event = req.body;
-  console.log(
-    event,
-    "event, 'dsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjjdsfdjjjjjjjjjjjjjj"
-  );
+
   try {
     const stripe = await stripeConfig(); // returns Stripe instance
     const config = await prisma.stripeConfiguration.findFirst(); // your custom DB config
@@ -164,9 +177,7 @@ export const activateRole = async (req, res) => {
 
     // 4. Calculate start and end dates
     const startDate = new Date();
-    const endDate = dayjs(startDate)
-      .add(userRole.rolePackage.durationDays, "day")
-      .toDate();
+    const endDate = dayjs(startDate).add(userRole.durationDays, "day").toDate();
 
     // 5. Activate the user role
     const activatedRole = await prisma.userRole.update({
@@ -227,7 +238,9 @@ export const getAllUserRoleApplications = async (req, res) => {
             id: true,
             name: true,
             durationDays: true,
-            price: true,
+            singleListingPrice: true,
+            totalPrice: true,
+            listingLimit: true,
           },
         },
       },

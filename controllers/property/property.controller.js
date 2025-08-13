@@ -36,6 +36,7 @@ export const searchProperty = async (req, res) => {
       andConditions.push({
         OR: [
           { city: { contains: search, mode: "insensitive" } },
+          { country: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
           { zip: { contains: search, mode: "insensitive" } },
         ],
@@ -87,6 +88,7 @@ export const createProperty = async (req, res) => {
     const {
       title,
       price,
+      country,
       address,
       city,
       state,
@@ -111,6 +113,8 @@ export const createProperty = async (req, res) => {
       basement,
       fireplace,
       pool,
+      isForeclosure,
+      isNewConstruction,
       pet,
       utilities,
       income,
@@ -121,7 +125,6 @@ export const createProperty = async (req, res) => {
     } = req.body;
 
     const userId = req.userId;
-    console.log(req.body);
     if (!userId)
       return res.status(400).json({ message: "User ID not found from token." });
 
@@ -133,39 +136,79 @@ export const createProperty = async (req, res) => {
       !bedrooms ||
       !bathrooms ||
       !size ||
-      !description
+      !description ||
+      !country ||
+      !address ||
+      !city ||
+      !state ||
+      !zip ||
+      !latitude ||
+      !longitude
     ) {
       return res
         .status(400)
         .json({ success: false, message: "Missing required fields" });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const avilableCountryData = await prisma.country.findMany();
+
+    const isCountryAvailable = avilableCountryData.some(
+      (c) => c.name.toLowerCase() === country.toLowerCase()
+    );
+
+    if (!isCountryAvailable) {
+      return res.status(403).json({ message: "Country is restricted" });
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
     }
 
-    console.log(user.role);
-    // Parse amenities if it comes as a JSON string
+    // ✅ Restrict "user" role to 1 property only (unless purchased package)
+    if (user.role === "user") {
+      const existingPropertyCount = await prisma.property.count({
+        where: { userId },
+      });
+
+      if (existingPropertyCount >= 1) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You have already listed a property. Please purchase a package to list more.",
+        });
+      }
+    }
+
+    const checkPackageActive = await prisma.userRole.findFirst({
+      where: { userId: user?.id },
+    });
+
+    if (checkPackageActive && checkPackageActive?.isExpired) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User package is expired." });
+    }
+
+    if (checkPackageActive?.useListing >= checkPackageActive?.listingLimit) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User package limit reached." });
+    }
+
+    // ✅ Handle amenities parsing
     let amenitiesArray = [];
     try {
       amenitiesArray =
         typeof amenities === "string" ? JSON.parse(amenities) : amenities;
-      if (!Array.isArray(amenitiesArray)) {
-        amenitiesArray = [];
-      }
+      if (!Array.isArray(amenitiesArray)) amenitiesArray = [];
     } catch {
       amenitiesArray = [];
     }
 
-    const slug = slugify(title, { lower: true, strict: true });
-
+    // ✅ Handle image upload validation
     if (!req.files || req.files.length === 0) {
       return res
         .status(400)
@@ -179,6 +222,9 @@ export const createProperty = async (req, res) => {
       }))
     );
 
+    const slug = slugify(title, { lower: true, strict: true });
+
+    // ✅ Check for existing property with same slug/location
     const existingProperty = await prisma.property.findFirst({
       where: {
         OR: [
@@ -196,6 +242,7 @@ export const createProperty = async (req, res) => {
         title,
         slug,
         price: parseFloat(price),
+        country,
         address,
         city,
         state,
@@ -220,6 +267,8 @@ export const createProperty = async (req, res) => {
         basement: basement === "true",
         fireplace: fireplace === "true",
         pool: pool === "true",
+        isForeclosure: isForeclosure === "true",
+        isNewConstruction: isNewConstruction === "true",
         pet,
         utilities,
         income,
@@ -239,12 +288,24 @@ export const createProperty = async (req, res) => {
         userEmail: user?.email,
         images: uploadedImages,
         flagStatus: existingProperty ? "approved" : "pending",
-        flagged: existingProperty ? true : false,
+        flagged: !!existingProperty,
         flagReason: existingProperty
           ? "Property data already exist. Duplicate property not allow!"
           : "",
         flaggedAt: existingProperty ? new Date() : null,
         reportedBy: existingProperty ? ["Reported by data created time."] : [],
+      },
+    });
+
+    await prisma.userRole.updateMany({
+      where: {
+        userId: user?.id,
+        isExpired: false,
+      },
+      data: {
+        useListing: {
+          increment: 1,
+        },
       },
     });
 
@@ -265,6 +326,7 @@ export const updateProperty = async (req, res) => {
       id,
       title,
       price,
+      country,
       address,
       city,
       state,
@@ -289,6 +351,8 @@ export const updateProperty = async (req, res) => {
       basement,
       fireplace,
       pool,
+      isForeclosure,
+      isNewConstruction,
       pet,
       utilities,
       income,
@@ -318,6 +382,16 @@ export const updateProperty = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Property not found" });
+    }
+
+    const avilableCountryData = await prisma.country.findMany();
+
+    const isCountryAvailable = avilableCountryData.some(
+      (c) => c.name.toLowerCase() === country.toLowerCase()
+    );
+
+    if (!isCountryAvailable) {
+      return res.status(403).json({ message: "Country is restricted" });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -376,6 +450,7 @@ export const updateProperty = async (req, res) => {
         title,
         slug: slugify(title, { lower: true, strict: true }),
         price: parseFloat(price),
+        country,
         address,
         city,
         state,
@@ -400,6 +475,9 @@ export const updateProperty = async (req, res) => {
         basement: basement === "true" || basement === true,
         fireplace: fireplace === "true" || fireplace === true,
         pool: pool === "true" || pool === true,
+        isForeclosure: isForeclosure === "true" || isForeclosure === true,
+        isNewConstruction:
+          isNewConstruction === "true" || isNewConstruction === true,
         pet,
         utilities,
         income,
@@ -459,6 +537,23 @@ export const deleteProperty = async (req, res) => {
       },
     });
 
+    await prisma.bookmark.deleteMany({
+      where: {
+        propertyId: id,
+      },
+    });
+
+    await prisma.propertyTourRequest.deleteMany({
+      where: {
+        propertyId: id,
+      },
+    });
+
+    await prisma.propertyContactUserRequest.deleteMany({
+      where: {
+        propertyId: id,
+      },
+    });
     // Delete images from Cloudinary
     if (Array.isArray(property.images)) {
       for (const image of property.images) {
@@ -488,6 +583,89 @@ export const deleteProperty = async (req, res) => {
   }
 };
 
+// export const getPropertyBySlug = async (req, res) => {
+//   const { slug } = req.params;
+
+//   let userId;
+//   const token = req.headers.authorization?.split(" ")[1];
+
+//   if (token) {
+//     try {
+//       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//       userId = decoded.userId;
+//     } catch (err) {
+//       console.warn("Invalid or expired token:", err.message);
+//     }
+//   }
+
+//   try {
+//     const property = await prisma.property.findFirst({
+//       where: {
+//         slug: slug,
+//       },
+//     });
+//     if (!property) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Property not found" });
+//     }
+
+//     await prisma.property.update({
+//       where: { id: property.id },
+//       data: {
+//         views: {
+//           increment: 1,
+//         },
+//       },
+//     });
+
+//     if (userId) {
+//       try {
+//         await prisma.propertyView.create({
+//           data: {
+//             userId,
+//             propertyId: property.id,
+//           },
+//         });
+//       } catch (err) {
+//         if (
+//           err.code !== "P2002" ||
+//           !err.meta?.target?.includes("userId_propertyId")
+//         ) {
+//           console.error("Property view tracking failed:", err);
+//         }
+//       }
+//     }
+
+//     const relevantProperties = await prisma.property.findMany({
+//       where: {
+//         id: { not: property.id },
+//         address: property?.address || "",
+//         city: property?.city || "",
+//         state: property?.state || "",
+//         type: property?.type || "",
+//         status: "approved",
+//         flagged: false,
+//       },
+//       take: 20,
+//       orderBy: { createdAt: "desc" },
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         property,
+//         relevantProperties,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Get property by slug error:", error);
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to fetch property" });
+//   }
+// };
+
 export const getPropertyBySlug = async (req, res) => {
   const { slug } = req.params;
 
@@ -504,17 +682,28 @@ export const getPropertyBySlug = async (req, res) => {
   }
 
   try {
+    // ✅ Get property and include owner info
     const property = await prisma.property.findFirst({
       where: {
         slug: slug,
       },
+      include: {
+        user: {
+          select: {
+            username: true,
+            avatar: true,
+          },
+        },
+      },
     });
+
     if (!property) {
       return res
         .status(404)
         .json({ success: false, message: "Property not found" });
     }
 
+    // ✅ Increment property view count
     await prisma.property.update({
       where: { id: property.id },
       data: {
@@ -524,6 +713,7 @@ export const getPropertyBySlug = async (req, res) => {
       },
     });
 
+    // ✅ Track individual user view
     if (userId) {
       try {
         await prisma.propertyView.create({
@@ -542,9 +732,11 @@ export const getPropertyBySlug = async (req, res) => {
       }
     }
 
+    // ✅ Fetch relevant properties
     const relevantProperties = await prisma.property.findMany({
       where: {
         id: { not: property.id },
+        country: property?.country || "",
         address: property?.address || "",
         city: property?.city || "",
         state: property?.state || "",
@@ -556,10 +748,12 @@ export const getPropertyBySlug = async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
+    // ✅ Respond with property and user (owner) data
     res.status(200).json({
       success: true,
       data: {
         property,
+        owner: property.user, // Explicitly sent for clarity
         relevantProperties,
       },
     });
@@ -789,6 +983,7 @@ export const property = async (req, res) => {
     const search = req.query.search || "";
 
     const {
+      country,
       city,
       state,
       zip,
@@ -814,11 +1009,13 @@ export const property = async (req, res) => {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
             { slug: { contains: search, mode: "insensitive" } },
+            { country: { contains: search, mode: "insensitive" } },
             { city: { contains: search, mode: "insensitive" } },
             { address: { contains: search, mode: "insensitive" } },
             { zip: { contains: search, mode: "insensitive" } },
           ],
         },
+        country ? { country: { equals: country, mode: "insensitive" } } : {},
         city ? { city: { equals: city, mode: "insensitive" } } : {},
         state ? { state: { equals: state, mode: "insensitive" } } : {},
         zip ? { zip: { equals: zip } } : {},
@@ -846,34 +1043,75 @@ export const property = async (req, res) => {
     };
 
     // 4. Fetch properties
+    // const [properties, total] = await Promise.all([
+    //   prisma.property.findMany({
+    //     where,
+    //     skip: Number(skip),
+    //     take: Number(limit),
+    //     orderBy: { createdAt: "desc" },
+    //   }),
+    //   prisma.property.count({ where }),
+    // ]);
+
+    // 5. Get user bookmark property IDs (if user is logged in)
+    // let bookmarkedPropertyIds = [];
+
+    // if (userId) {
+    //   const bookmarks = await prisma.bookmark.findMany({
+    //     where: { userId },
+    //     select: { propertyId: true, userId: true },
+    //   });
+    //   bookmarkedPropertyIds = bookmarks.map((b) => b.propertyId);
+    // }
+
+    // 6. Add `isBookmarked` to each property
+    // const updatedProperties = properties.map((prop) => {
+    //   return {
+    //     ...prop,
+    //     isBookmarked: bookmarkedPropertyIds.includes(prop.id),
+    //   };
+    // });
+
+    // 4. Fetch properties
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
         where,
         skip: Number(skip),
         take: Number(limit),
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" }, // Initial ordering by creation date
       }),
       prisma.property.count({ where }),
     ]);
 
-    // 5. Get user bookmark property IDs (if user is logged in)
-    let bookmarkedPropertyIds = [];
+    // Custom role priority
+    const rolePriority = {
+      agent_broker: 1,
+      property_manager: 2,
+      homeowner_landlord: 3,
+    };
 
+    // 5. Get user bookmark property IDs
+    let bookmarkedPropertyIds = [];
     if (userId) {
       const bookmarks = await prisma.bookmark.findMany({
         where: { userId },
-        select: { propertyId: true, userId: true },
+        select: { propertyId: true },
       });
       bookmarkedPropertyIds = bookmarks.map((b) => b.propertyId);
     }
 
-    // 6. Add `isBookmarked` to each property
-    const updatedProperties = properties.map((prop) => {
-      return {
+    // 6. Add isBookmarked + sort manually by listingType
+    const updatedProperties = properties
+      .map((prop) => ({
         ...prop,
         isBookmarked: bookmarkedPropertyIds.includes(prop.id),
-      };
-    });
+      }))
+      .sort((a, b) => {
+        return (
+          (rolePriority[a.listingType] || 99) -
+          (rolePriority[b.listingType] || 99)
+        );
+      });
 
     // 7. Response
     res.status(200).json({

@@ -34,18 +34,21 @@ enum RolePackageStatus {
 }
 
 model RolePackage {
-  id            String            @id @default(auto()) @map("_id") @db.ObjectId
-  name          String
-  roleName      RoleName
-  price         Float
-  durationDays  Int
-  features      String[]
-  image         String
-  imagePublicId String?
-  status        RolePackageStatus @default(active)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  userRoles     UserRole[]
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  name               String
+  slug               String            @unique
+  roleName           RoleName
+  singleListingPrice Float
+  totalPrice         Float
+  durationDays       Int               @default(30) // Duration in days
+  listingLimit       Int               @default(1) // Default listing limit
+  features           String[]
+  image              String
+  imagePublicId      String?
+  status             RolePackageStatus @default(active)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  userRoles          UserRole[]
 }
 
 // users
@@ -89,6 +92,7 @@ model User {
   sessions                   Session[]
   property                   Property[]
   Bookmark                   Bookmark[]
+  mortgageRates              MortgageRate[]
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]
   PropertyContactUserRequest PropertyContactUserRequest[]
@@ -118,6 +122,9 @@ model UserRole {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   userId        String    @db.ObjectId
   rolePackageId String    @db.ObjectId
+  durationDays  Int       @default(0) // Duration in days
+  listingLimit  Int       @default(0) // Default listing limit
+  useListing    Int       @default(0) // Used listing count
   startDate     DateTime?
   endDate       DateTime?
   isActive      Boolean   @default(false)
@@ -137,16 +144,19 @@ model UserRole {
 
 //  transaction
 model Transaction {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String   @db.ObjectId
-  userRoleId String   @db.ObjectId // ✅ No @unique here
-  amount     Float
-  currency   String
-  status     String
-  method     String?
-  stripeId   String   @unique
-  invoiceUrl String?
-  createdAt  DateTime @default(now())
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String   @db.ObjectId
+  userRoleId            String   @db.ObjectId // ✅ No @unique here
+  amount                Float
+  durationDays          Int      @default(0) // Duration in days
+  listingLimit          Int      @default(0) // Default listing limit
+  currency              String
+  status                String
+  method                String?
+  stripeId              String   @unique
+  isTransactionPurchase Boolean  @default(false) // true for purchase, false for renew
+  invoiceUrl            String?
+  createdAt             DateTime @default(now())
 
   user     User     @relation(fields: [userId], references: [id])
   userRole UserRole @relation(fields: [userRoleId], references: [id]) // ✅ One-to-many
@@ -379,12 +389,13 @@ model Property {
   // slug         String  @unique // for SEO-friendly URLs
   slug         String
   price        Float
-  address      String?
-  city         String?
-  state        String?
-  zip          String?
-  latitude     String?
-  longitude    String?
+  country      String
+  address      String
+  city         String
+  state        String
+  zip          String
+  latitude     String
+  longitude    String
   neighborhood String?
   views        Int     @default(0) // For analytics
 
@@ -404,11 +415,13 @@ model Property {
   deposit     Float?
   moveInDate  DateTime?
 
-  amenities String[]
-  garage    Boolean? @default(false)
-  basement  Boolean? @default(false)
-  fireplace Boolean? @default(false)
-  pool      Boolean? @default(false)
+  amenities         String[]
+  garage            Boolean? @default(false)
+  basement          Boolean? @default(false)
+  fireplace         Boolean? @default(false)
+  pool              Boolean? @default(false)
+  isForeclosure     Boolean? @default(false)
+  isNewConstruction Boolean? @default(false)
 
   pet        String?
   utilities  String?
@@ -439,6 +452,11 @@ model Property {
   soldPrice    Int            @default(0)
   soldFeedback String?
   soldAt       DateTime?
+
+  isRent       Boolean   @default(false)
+  rentPrice    Int       @default(0)
+  rentFeedback String?
+  rentAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -489,8 +507,8 @@ model Bookmark {
   propertyId String   @db.ObjectId
   createdAt  DateTime @default(now())
 
-  user     User     @relation(fields: [userId], references: [id])
-  property Property @relation(fields: [propertyId], references: [id],onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
 }
@@ -510,18 +528,26 @@ model PropertyView {
 
 // property tour request
 model PropertyTourRequest {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String   @db.ObjectId
-  propertyId String   @db.ObjectId
+  id         String                    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String                    @db.ObjectId
+  propertyId String                    @db.ObjectId
   name       String
   email      String
   phone      String
   message    String?
   tourTimes  Json // Array of tour objects: [{ date, time }]
-  createdAt  DateTime @default(now())
+  status     PropertyTourRequestStatus @default(pending)
+  createdAt  DateTime                  @default(now())
 
   user     User?    @relation(fields: [userId], references: [id])
   property Property @relation(fields: [propertyId], references: [id])
+}
+
+// property tour request status
+enum PropertyTourRequestStatus {
+  pending
+  approved
+  rejected
 }
 
 // property contact user request
@@ -615,22 +641,44 @@ model SiteConfiguration {
   updatedAt        DateTime @updatedAt
 }
 
-
-
+// newsletter
 model Newsletter {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  title        String
-  subject      String
-  content      String
-  type         String
-  segment      String
-  status       String
-  date         DateTime @default(now())
-  recipients        Int      @default(0)
-  openRate          Int      @default(0)
-  clickRate         Int      @default(0)
-  unsubscribeRate   Int      @default(0)
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  subject         String
+  content         String
+  type            String
+  segment         String
+  status          String
+  date            DateTime @default(now())
+  recipients      Int      @default(0)
+  openRate        Int      @default(0)
+  clickRate       Int      @default(0)
+  unsubscribeRate Int      @default(0)
 
   @@index([status])
   @@index([segment])
+}
+
+// mortgage rate
+model MortgageRate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  type        String
+  rate        Float
+  loanType    String
+  creditScore String?
+  homePurpose String?
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// country
+model Country {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

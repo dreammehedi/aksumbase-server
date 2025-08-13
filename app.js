@@ -28,11 +28,14 @@ import DevelopmentPlatformRouter from "./routes/home/developmentPlatform.route.j
 import HeroBannerRouter from "./routes/home/heroBanner.route.js";
 import MarketTrendsRouter from "./routes/home/marketTrends.route.js";
 import MortageToolsRouter from "./routes/home/mortageTools.route.js";
+import MortgageRateRouter from "./routes/loan-officer/mortgageRate.route.js";
 import BlogRouter from "./routes/other/blog.route.js";
 import ContactUserRouter from "./routes/other/contactUser.route.js";
+import CountryRouter from "./routes/other/country.route.js";
 import EmailConfigurationRouter from "./routes/other/emailConfiguration.route.js";
 import FaqsRouter from "./routes/other/faqs.route.js";
 import GetEstimateRouter from "./routes/other/getEstimate.route.js";
+import NewsletterRouter from "./routes/other/newsletter.routes.js";
 import OtherRouter from "./routes/other/other.route.js";
 import SellBannerRouter from "./routes/other/sellerPageBanner.route.js";
 import SellerResourcesRouter from "./routes/other/sellerResources.route.js";
@@ -43,7 +46,6 @@ import PropertyBookmarkRouter from "./routes/property/propertyBookmark.route.js"
 import PropertyContactUserRequestRouter from "./routes/property/propertyContactUserRequest.route.js";
 import PropertyTourRequestRouter from "./routes/property/propertyTourRequest.route.js";
 import UserReviewRouter from "./routes/property/userReview.route.js";
-import NewsletterRouter from "./routes/other/newsletter.routes.js";
 
 // Configure environment variables
 dotenv.config();
@@ -100,9 +102,11 @@ app.use(cookieParser());
 
 // CORS configuration
 const allowedOrigins = [
-  "http://localhost:5173", // Development
-  "https://aksumbase.com", // Production
-  "https://www.aksumbase.com", // Production with www
+  "http://localhost:5173",
+  "https://aksumbase.com",
+  "http://aksumbase.com",
+  "https://www.aksumbase.com",
+  "http://www.aksumbase.com",
   "https://aksumbase-frontend.vercel.app",
   "https://aksumbase-frontend-qsfw.vercel.app",
 ];
@@ -155,8 +159,25 @@ app.get("/health", (req, res) => {
 });
 
 // In your express app or router file
-
 app.get("/api/stripe/session", async (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId) return res.status(400).json({ error: "Session ID required" });
+
+  const config = await prisma.stripeConfiguration.findFirst();
+  if (!config?.stripeSecret)
+    throw new Error("Stripe secret key not found in DB");
+
+  try {
+    const stripe = new Stripe(config.stripeSecret);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    res.json(session);
+  } catch (error) {
+    console.error("Failed to fetch session:", error);
+    res.status(500).json({ error: "Failed to fetch session" });
+  }
+});
+
+app.get("/api/role-renew/stripe/session", async (req, res) => {
   const { sessionId } = req.query;
   if (!sessionId) return res.status(400).json({ error: "Session ID required" });
 
@@ -200,6 +221,10 @@ app.use("/api", ContactUserRouter);
 app.use("/api", GetEstimateRouter);
 app.use("/api", FaqsRouter);
 app.use("/api", NewsletterRouter);
+app.use("/api", CountryRouter);
+
+// loan officer routes
+app.use("/api", MortgageRateRouter);
 
 // Start cron job
 roleExpiryChecker();
