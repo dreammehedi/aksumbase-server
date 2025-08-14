@@ -109,6 +109,9 @@ const allowedOrigins = [
   "http://www.aksumbase.com",
   "https://aksumbase-frontend.vercel.app",
   "https://aksumbase-frontend-qsfw.vercel.app",
+  "http://144.91.123.60",
+  "https://144.91.123.60",
+  "144.91.123.60",
 ];
 
 app.use(
