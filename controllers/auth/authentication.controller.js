@@ -828,7 +828,7 @@ export const changePassword = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
   try {
-    // Email and role are available on req.user from passport
+    const { platform } = req.params; // make sure your route defines :platform
     const { email, role = "user", id, username, status } = req.user;
 
     if (!email) {
@@ -840,7 +840,6 @@ export const googleLogin = async (req, res) => {
     const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
     const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
-    // Step 1: Create session
     const session = await prisma.session.create({
       data: {
         userId: id,
@@ -851,31 +850,34 @@ export const googleLogin = async (req, res) => {
     });
 
     const token = jwt.sign(
-      {
-        userId: id,
-        email: email,
-        sessionId: session.id,
-        role: role,
-      },
+      { userId: id, email, sessionId: session.id, role },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "3d",
-      }
+      { expiresIn: "3d" }
     );
 
-    // Step 3: Update session with real token
     await prisma.session.update({
       where: { id: session.id },
       data: { token },
     });
 
+    // Redirect URLs
     const frontendURL = `${process.env.FRONTEND_LINK}/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
-    res.redirect(frontendURL);
+
+    // For mobile app, use deep linking scheme:
+    const appURL = `${process.env.APP_LINK}://auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
+
+    res.redirect(platform === "app" ? appURL : frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
-    res.redirect(`${process.env.FRONTEND_LINK}/login?error=login_failed`);
+    const { platform } = req.params;
+    if (platform === "app") {
+      res.redirect(`${process.env.APP_LINK}://login?error=login_failed`);
+    } else {
+      res.redirect(`${process.env.FRONTEND_LINK}/login?error=login_failed`);
+    }
   }
 };
+
 
 export const verify2FA = async (req, res) => {
   const { email, otp } = req.body;
