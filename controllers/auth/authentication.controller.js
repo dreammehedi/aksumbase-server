@@ -1173,3 +1173,67 @@ export const toggleUserStatus = async (req, res) => {
     return res.status(500).json({ error: "Something went wrong!" });
   }
 };
+
+
+
+export const getCurrentUserAppUse = async (req, res, next) => {
+  const { email } = req.email; 
+  const token = req.token;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email not found." });
+  }
+
+  if (!token) {
+    return res.status(400).json({ message: "Token not found in token." });
+  }
+
+  try {
+    // ✅ Correct query format
+    const user = await prisma.user.findFirst({
+      where: { email: email },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const session = await prisma.session.findFirst({
+      where: { token },
+    });
+
+    if (!session || !session.isActive) {
+      return next(createError(403, "Session is expired!"));
+    }
+
+    const {
+      password,
+      resetCode,
+      resetCodeExpiration,
+      twoFactorTempToken,
+      twoFactorTempExp,
+      ...userData
+    } = user;
+
+    res.status(200).json({
+      success: true,
+      message: "User profile retrieved successfully.",
+      payload: userData,
+      session: {
+        id: session.id,
+        deviceInfo: session.deviceInfo,
+        isActive: session.isActive,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({
+      success: false,
+      message:
+        error.message || "An error occurred while fetching the user profile.",
+    });
+  }
+};
