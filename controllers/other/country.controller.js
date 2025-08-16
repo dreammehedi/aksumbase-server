@@ -5,8 +5,9 @@ const prisma = new PrismaClient();
 
 export const getCountry = async (req, res) => {
   try {
-    // 1. Get countries
+    // 1. Get only active countries
     const countries = await prisma.country.findMany({
+      where: { status: "active" }, // ✅ filter active
       orderBy: { createdAt: "desc" },
     });
 
@@ -16,11 +17,9 @@ export const getCountry = async (req, res) => {
       _count: { country: true },
     });
 
-    // 3. Map property counts into country response
+    // 3. Attach listing count
     const countryWithCounts = countries.map((country) => {
-      const countObj = propertyCounts.find(
-        (p) => p.country === country.name // 👈 assuming Country model has `name` field
-      );
+      const countObj = propertyCounts.find((p) => p.country === country.name);
       return {
         ...country,
         listingCount: countObj ? countObj._count.country : 0,
