@@ -864,14 +864,14 @@ export const googleLogin = async (req, res) => {
     const frontendURL = `${process.env.FRONTEND_LINK}/auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
 
     // For mobile app, use deep linking scheme:
-    const appURL = `${process.env.APP_LINK}://auth/google/callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
+    const appURL = `${process.env.APP_LINK}://google-callback?token=${token}&role=${role}&id=${id}&username=${username}&status=${status}&email=${email}`;
 
     res.redirect(platform === "app" ? appURL : frontendURL);
   } catch (error) {
     console.error("Google login error:", error);
     const { platform } = req.params;
     if (platform === "app") {
-      res.redirect(`${process.env.APP_LINK}://login?error=login_failed`);
+      res.redirect(`${process.env.APP_LINK}://signin?error=login_failed`);
     } else {
       res.redirect(`${process.env.FRONTEND_LINK}/login?error=login_failed`);
     }
