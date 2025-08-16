@@ -5,15 +5,34 @@ const prisma = new PrismaClient();
 
 export const getCountry = async (req, res) => {
   try {
-    const data = await prisma.country.findMany({
+    // 1. Get countries
+    const countries = await prisma.country.findMany({
       orderBy: { createdAt: "desc" },
     });
-    res.status(200).json({ success: true, data });
+
+    // 2. Count properties grouped by country name
+    const propertyCounts = await prisma.property.groupBy({
+      by: ["country"],
+      _count: { country: true },
+    });
+
+    // 3. Map property counts into country response
+    const countryWithCounts = countries.map((country) => {
+      const countObj = propertyCounts.find(
+        (p) => p.country === country.name // 👈 assuming Country model has `name` field
+      );
+      return {
+        ...country,
+        listingCount: countObj ? countObj._count.country : 0,
+      };
+    });
+
+    res.status(200).json({ success: true, data: countryWithCounts });
   } catch (error) {
     console.error("Get country error:", error);
     res
       .status(500)
-      .json({ success: false, message: "Failed to fetch countrys" });
+      .json({ success: false, message: "Failed to fetch countries" });
   }
 };
 
@@ -29,13 +48,30 @@ export const country = async (req, res) => {
       ],
     };
 
-    const data = await prisma.country.findMany({
+    // 1. Get paginated countries
+    const countries = await prisma.country.findMany({
       where,
       skip: Number(skip),
       take: Number(limit),
       orderBy: { createdAt: "desc" },
     });
 
+    // 2. Count properties grouped by country string
+    const propertyCounts = await prisma.property.groupBy({
+      by: ["country"],
+      _count: { country: true },
+    });
+
+    // 3. Merge property count into each country
+    const data = countries.map((c) => {
+      const match = propertyCounts.find((p) => p.country === c.name);
+      return {
+        ...c,
+        listingCount: match ? match._count.country : 0,
+      };
+    });
+
+    // 4. Total country count (for pagination)
     const total = await prisma.country.count({ where });
 
     res.status(200).json({
@@ -52,7 +88,7 @@ export const country = async (req, res) => {
 };
 
 export const createCountry = async (req, res) => {
-  const { name } = req.body;
+  const { name, status } = req.body;
 
   try {
     // Validate required fields
@@ -69,6 +105,7 @@ export const createCountry = async (req, res) => {
       data: {
         name,
         slug,
+        status,
       },
     });
 
@@ -83,7 +120,7 @@ export const createCountry = async (req, res) => {
   }
 };
 export const updateCountry = async (req, res) => {
-  const { id, name } = req.body;
+  const { id, name, status } = req.body;
 
   try {
     const existingCountry = await prisma.country.findUnique({ where: { id } });
@@ -97,6 +134,7 @@ export const updateCountry = async (req, res) => {
     const updatedFields = {
       name,
       slug: slugify(name, { lower: true, strict: true }),
+      status,
     };
 
     const updatedCountry = await prisma.country.update({

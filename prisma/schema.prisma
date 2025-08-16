@@ -382,7 +382,7 @@ model DevelopmentPlatform {
   updatedAt     DateTime @updatedAt
 }
 
-// property listig (working on mehedi)
+// property listig
 model Property {
   id           String  @id @default(auto()) @map("_id") @db.ObjectId
   title        String
@@ -402,7 +402,7 @@ model Property {
   type     PropertyType // buy, rent, sold
   property PropertyCategory // apartment, house, etc.
 
-  isRead  Boolean? @default(false)
+  isRead Boolean? @default(false)
 
   bedrooms    Int?
   bathrooms   Int?
@@ -465,6 +465,7 @@ model Property {
   PropertyView               PropertyView[]
   PropertyTourRequest        PropertyTourRequest[]
   PropertyContactUserRequest PropertyContactUserRequest[]
+  
 }
 
 // property type
@@ -674,11 +675,18 @@ model MortgageRate {
   updatedAt   DateTime @updatedAt
 }
 
+// user status
+enum CountryStatus {
+  active
+  inactive
+}
+
 // country
 model Country {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  slug      String        @unique
+  status    CountryStatus @default(active)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
