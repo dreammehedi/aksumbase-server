@@ -417,6 +417,7 @@ export const loginUser = async (req, res) => {
         createdAt,
         isTwoFactorEnabled,
         token: jwtToken,
+        avatar: user?.avatar
       },
     });
   } catch (error) {
