@@ -17,12 +17,14 @@ import {
   toggleUserStatus,
   updateProfile,
   verify2FA,
+  getCurrentUserAppUse,
 } from "../../controllers/auth/authentication.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
 const AuthenticationRouter = express.Router();
 const AuthRouter = express.Router();
 
+AuthenticationRouter.get("/current-user-app", verifyToken, getCurrentUserAppUse);
 AuthenticationRouter.get("/user-profile/:email", verifyToken, getUserProfile);
 AuthenticationRouter.post("/user-register", upload.none(), registerUser);
 AuthenticationRouter.post(
