@@ -1177,7 +1177,7 @@ export const toggleUserStatus = async (req, res) => {
 
 
 export const getCurrentUserAppUse = async (req, res, next) => {
-  const { email } = req.email; 
+  const email = req.email; 
   const token = req.token;
 
   if (!email) {
