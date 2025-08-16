@@ -417,7 +417,7 @@ export const loginUser = async (req, res) => {
         createdAt,
         isTwoFactorEnabled,
         token: jwtToken,
-        avatar: user?.avatar
+        avatar: user?.avatar,
       },
     });
   } catch (error) {
@@ -828,7 +828,7 @@ export const changePassword = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
   try {
-    const { platform } = req.params; // make sure your route defines :platform
+    const { platform } = req.query;
     const { email, role = "user", id, username, status } = req.user;
 
     if (!email) {
@@ -877,7 +877,6 @@ export const googleLogin = async (req, res) => {
     }
   }
 };
-
 
 export const verify2FA = async (req, res) => {
   const { email, otp } = req.body;
@@ -1176,10 +1175,8 @@ export const toggleUserStatus = async (req, res) => {
   }
 };
 
-
-
 export const getCurrentUserAppUse = async (req, res, next) => {
-  const email = req.email; 
+  const email = req.email;
   const token = req.token;
 
   if (!email) {
