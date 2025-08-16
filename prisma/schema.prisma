@@ -393,7 +393,7 @@ model Property {
   address      String
   city         String
   state        String
-  zip          String
+  zip          String?
   latitude     String
   longitude    String
   neighborhood String?

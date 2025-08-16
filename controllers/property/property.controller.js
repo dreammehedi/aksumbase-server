@@ -141,7 +141,6 @@ export const createProperty = async (req, res) => {
       !address ||
       !city ||
       !state ||
-      !zip ||
       !latitude ||
       !longitude
     ) {
@@ -246,7 +245,7 @@ export const createProperty = async (req, res) => {
         address,
         city,
         state,
-        zip,
+        zip: zip || "",
         latitude,
         longitude,
         neighborhood,
@@ -454,7 +453,7 @@ export const updateProperty = async (req, res) => {
         address,
         city,
         state,
-        zip,
+        zip: zip || "",
         latitude,
         longitude,
         neighborhood,
