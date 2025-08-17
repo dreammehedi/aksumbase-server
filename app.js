@@ -142,12 +142,12 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, true), // allow any origin dynamically
-    credentials: true,
+    origin: "*", // Allow all origins
+    credentials: true, // Note: credentials won't work with '*' in browsers
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     exposedHeaders: ["Set-Cookie"],
-    maxAge: 86400,
+    maxAge: 86400, // 24 hours
   })
 );
 
