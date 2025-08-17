@@ -112,6 +112,11 @@ const allowedOrigins = [
   "http://144.91.123.60",
   "https://144.91.123.60",
   "144.91.123.60",
+  "http://144.91.123.60:8800",
+  "https://api.aksumbase.com",
+  "http://api.aksumbase.com",
+  "https://www.api.aksumbase.com",
+  "http://www.api.aksumbase.com",
 ];
 
 app.use(
