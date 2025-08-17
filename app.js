@@ -101,55 +101,54 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
 // CORS configuration
-// const allowedOrigins = [
-//   "http://localhost:5173",
-//   "https://aksumbase.com",
-//   "http://aksumbase.com",
-//   "https://www.aksumbase.com",
-//   "http://www.aksumbase.com",
-//   "https://aksumbase-frontend.vercel.app",
-//   "https://aksumbase-frontend-qsfw.vercel.app",
-//   "http://144.91.123.60",
-//   "https://144.91.123.60",
-//   "144.91.123.60",
-//   "http://144.91.123.60:8800",
-//   "https://api.aksumbase.com",
-//   "http://api.aksumbase.com",
-//   "https://www.api.aksumbase.com",
-//   "http://www.api.aksumbase.com",
-// ];
-
-// app.use(
-//   cors({
-//     origin: function (origin, callback) {
-//       // Allow requests with no origin (like mobile apps or curl requests)
-//       if (!origin) return callback(null, true);
-
-//       if (allowedOrigins.indexOf(origin) === -1) {
-//         const msg =
-//           "The CORS policy for this site does not allow access from the specified Origin.";
-//         return callback(new Error(msg), false);
-//       }
-//       return callback(null, true);
-//     },
-//     credentials: true,
-//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-//     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-//     exposedHeaders: ["Set-Cookie"],
-//     maxAge: 86400, // 24 hours
-//   })
-// );
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://aksumbase.com",
+  "http://aksumbase.com",
+  "https://www.aksumbase.com",
+  "http://www.aksumbase.com",
+  "https://aksumbase-frontend.vercel.app",
+  "https://aksumbase-frontend-qsfw.vercel.app",
+  "http://144.91.123.60",
+  "https://144.91.123.60",
+  "http://144.91.123.60:8800",
+  "https://api.aksumbase.com",
+  "http://api.aksumbase.com",
+  "https://www.api.aksumbase.com",
+  "http://www.api.aksumbase.com",
+];
 
 app.use(
   cors({
-    origin: "*", // Allow all origins
-    credentials: true, // Note: credentials won't work with '*' in browsers
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     exposedHeaders: ["Set-Cookie"],
     maxAge: 86400, // 24 hours
   })
 );
+
+// app.use(
+//   cors({
+//     origin: "*", // Allow all origins
+//     credentials: true, // Note: credentials won't work with '*' in browsers
+//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+//     exposedHeaders: ["Set-Cookie"],
+//     maxAge: 86400, // 24 hours
+//   })
+// );
 
 // Passport middleware
 app.use(
