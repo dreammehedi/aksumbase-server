@@ -18,6 +18,7 @@ import {
   toggleUserStatus,
   updateProfile,
   verify2FA,
+  verifyEmail,
 } from "../../controllers/auth/authentication.controller.js";
 import { verifyAdminOld } from "../../middleware/verifyAdmin.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
@@ -31,6 +32,7 @@ AuthenticationRouter.get(
 );
 AuthenticationRouter.get("/user-profile/:email", verifyToken, getUserProfile);
 AuthenticationRouter.post("/user-register", upload.none(), registerUser);
+AuthenticationRouter.get("/user-verify", upload.none(), verifyEmail);
 AuthenticationRouter.post(
   "/admin-register",
   verifyToken,

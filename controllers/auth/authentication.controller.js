@@ -10,11 +10,122 @@ import { sendEmail } from "../../helper/sendEmail.js";
 import prisma from "../../lib/prisma.js";
 import cloudinary from "../../utils/cloudinary.js";
 import { createError } from "../../utils/error.js";
+import { sendVerificationEmail } from "../../utils/mailer.js";
+
+// export const registerUser = async (req, res) => {
+//   try {
+//     const { email, username, password } = req.body;
+
+//     const missingFields = [];
+//     if (!email) missingFields.push("Email");
+//     if (!username) missingFields.push("Username");
+//     if (!password) missingFields.push("Password");
+
+//     if (missingFields.length > 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: `${missingFields.join(", ")} field(s) are required.`,
+//       });
+//     }
+
+//     if (password.length < 8) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Password must be at least 8 characters long.",
+//       });
+//     }
+
+//     // Check for existing user
+//     const existingUser = await prisma.user.findFirst({
+//       where: {
+//         OR: [{ email }],
+//       },
+//     });
+
+//     if (existingUser) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "User already registered with this email or username.",
+//       });
+//     }
+
+//     const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
+
+//     const newUser = await prisma.user.create({
+//       data: {
+//         email,
+//         username,
+//         password: hashedPassword,
+//         role: "user",
+//         status: "active",
+//         avatar: "",
+//         avatarPublicId: "",
+//         resetCode: "",
+//         resetCodeExpiration: new Date(),
+//       },
+//     });
+
+//     const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+//     const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+//     // Step 1: Create session
+//     const session = await prisma.session.create({
+//       data: {
+//         userId: newUser.id,
+//         token: "temp",
+//         deviceInfo,
+//         expiresAt,
+//       },
+//     });
+
+//     // Step 2: Generate JWT with session ID
+//     const token = jwt.sign(
+//       {
+//         userId: newUser.id,
+//         email: newUser.email,
+//         sessionId: session.id,
+//         token: newUser.token,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "3d" }
+//     );
+
+//     // Step 3: Update session with token
+//     await prisma.session.update({
+//       where: { id: session.id },
+//       data: { token },
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: "User registered successfully.",
+//       payload: {
+//         _id: newUser.id,
+//         email: newUser.email,
+//         username: newUser.username,
+//         role: newUser.role,
+//         status: newUser.status,
+//         token,
+//         createdAt: newUser.createdAt,
+//         isTwoFactorEnabled: newUser.isTwoFactorEnabled,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Register Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: error.message || "An error occurred during registration.",
+//     });
+//   }
+// };
+
+const CLIENT_URL = process.env.FRONTEND_LINK || "https://aksumbase.com";
 
 export const registerUser = async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
+    // Validate required fields
     const missingFields = [];
     if (!email) missingFields.push("Email");
     if (!username) missingFields.push("Username");
@@ -35,78 +146,59 @@ export const registerUser = async (req, res) => {
     }
 
     // Check for existing user
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }],
-      },
-    });
-
+    const existingUser = await prisma.user.findFirst({ where: { email } });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "User already registered with this email or username.",
+        message: "User already registered with this email.",
       });
     }
 
     const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
 
+    // Generate email verification token
+    const emailToken = crypto.randomBytes(32).toString("hex");
+    const emailTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Create new user (status pending)
     const newUser = await prisma.user.create({
       data: {
         email,
         username,
         password: hashedPassword,
         role: "user",
-        status: "active",
+        status: "pending",
+        emailVerificationToken: emailToken,
+        emailVerificationExpires: emailTokenExpiry,
         avatar: "",
         avatarPublicId: "",
-        resetCode: "",
-        resetCodeExpiration: new Date(),
       },
     });
 
-    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
-    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    // Send verification email
+    await sendVerificationEmail(newUser.email, emailToken, CLIENT_URL);
 
-    // Step 1: Create session
-    const session = await prisma.session.create({
+    // Create session (temporary token)
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    await prisma.session.create({
       data: {
         userId: newUser.id,
         token: "temp",
         deviceInfo,
-        expiresAt,
+        expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
       },
-    });
-
-    // Step 2: Generate JWT with session ID
-    const token = jwt.sign(
-      {
-        userId: newUser.id,
-        email: newUser.email,
-        sessionId: session.id,
-        token: newUser.token,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "3d" }
-    );
-
-    // Step 3: Update session with token
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { token },
     });
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully.",
+      message:
+        "User registered successfully. Please check your email to verify your account.",
       payload: {
         _id: newUser.id,
         email: newUser.email,
         username: newUser.username,
         role: newUser.role,
         status: newUser.status,
-        token,
-        createdAt: newUser.createdAt,
-        isTwoFactorEnabled: newUser.isTwoFactorEnabled,
       },
     });
   } catch (error) {
@@ -115,6 +207,272 @@ export const registerUser = async (req, res) => {
       success: false,
       message: error.message || "An error occurred during registration.",
     });
+  }
+};
+
+// export const loginUser = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     if (!email || !password)
+//       return res
+//         .status(400)
+//         .json({ message: "Email and password are required." });
+
+//     const user = await prisma.user.findUnique({ where: { email } });
+//     if (!user) return res.status(404).json({ message: "User not found." });
+
+//     if (user.status !== "active")
+//       return res.status(403).json({
+//         message: `Your AksumBase account has been ${user.status} by an administrator. If you believe this was a mistake, please contact support.`,
+//       });
+
+//     // const isAdmin = email === "admin@gmail.com";
+//     // const passwordMatch = isAdmin
+//     //   ? password === user.password
+//     //   : await bcrypt.compare(password, user.password);
+
+//     const passwordMatch = await bcrypt.compare(password, user.password);
+
+//     if (!passwordMatch)
+//       return res.status(401).json({ message: "Invalid email or password." });
+
+//     // 2FA
+//     if (user.isTwoFactorEnabled) {
+//       const otp = crypto.randomInt(100000, 999999).toString();
+//       await prisma.user.update({
+//         where: { id: user.id },
+//         data: {
+//           twoFactorTempToken: otp,
+//           twoFactorTempExp: new Date(Date.now() + 5 * 60 * 1000),
+//         },
+//       });
+
+//       await sendOtpEmail(user.email, otp);
+
+//       return res.status(200).json({
+//         success: true,
+//         step: "2fa",
+//         message: "OTP sent to your email. Please verify.",
+//         email: user.email,
+//       });
+//     }
+
+//     const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+//     const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+//     // Step 1: Create session
+//     const session = await prisma.session.create({
+//       data: {
+//         userId: user.id,
+//         token: "temp",
+//         deviceInfo,
+//         expiresAt,
+//       },
+//     });
+
+//     // Step 2: Generate token with sessionId
+//     const jwtToken = jwt.sign(
+//       {
+//         userId: user.id,
+//         email: user.email,
+//         sessionId: session.id,
+//         role: user.role,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "3d" }
+//     );
+
+//     // Step 3: Update session with real token
+//     await prisma.session.update({
+//       where: { id: session.id },
+//       data: { token: jwtToken },
+//     });
+
+//     const { id, username, role, status, createdAt, isTwoFactorEnabled } = user;
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Login successful.",
+//       payload: {
+//         _id: id,
+//         name: username,
+//         email,
+//         role,
+//         status,
+//         createdAt,
+//         isTwoFactorEnabled,
+//         token: jwtToken,
+//         avatar: user?.avatar,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Login Error:", error);
+//     res
+//       .status(500)
+//       .json({ message: error.message || "Server error during login." });
+//   }
+// };
+
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password)
+      return res
+        .status(400)
+        .json({ message: "Email and password are required." });
+
+    // Find user
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    // Ensure email is verified
+    if (user.status !== "active")
+      return res.status(403).json({
+        message:
+          "Your email is not verified. Please check your inbox and verify your email before logging in.",
+      });
+
+    // Check password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch)
+      return res.status(401).json({ message: "Invalid email or password." });
+
+    // Handle 2FA if enabled
+    if (user.isTwoFactorEnabled) {
+      const otp = crypto.randomInt(100000, 999999).toString();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorTempToken: otp,
+          twoFactorTempExp: new Date(Date.now() + 5 * 60 * 1000), // 5 min expiry
+        },
+      });
+
+      await sendOtpEmail(user.email, otp);
+
+      return res.status(200).json({
+        success: true,
+        step: "2fa",
+        message: "OTP sent to your email. Please verify.",
+        email: user.email,
+      });
+    }
+
+    // Create session
+    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        token: "temp",
+        deviceInfo,
+        expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    // Generate JWT
+    const jwtToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        sessionId: session.id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "3d" }
+    );
+
+    // Update session with real token
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { token: jwtToken },
+    });
+
+    // Return user info
+    const {
+      id,
+      username,
+      role,
+      status,
+      createdAt,
+      isTwoFactorEnabled,
+      avatar,
+    } = user;
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      payload: {
+        _id: id,
+        name: username,
+        email,
+        role,
+        status,
+        createdAt,
+        isTwoFactorEnabled,
+        token: jwtToken,
+        avatar,
+      },
+    });
+  } catch (error) {
+    console.error("Login Error:", error);
+    res.status(500).json({
+      message: error.message || "Server error during login.",
+    });
+  }
+};
+
+export const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) return res.status(400).send("Invalid token.");
+
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerificationToken: token,
+        emailVerificationExpires: { gt: new Date() },
+      },
+    });
+
+    if (!user) return res.status(400).send("Token expired or invalid.");
+
+    // Activate user and remove verification token
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        status: "active",
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+      },
+    });
+
+    // Generate JWT token
+    const jwtToken = jwt.sign(
+      { userId: updatedUser.id, email: updatedUser.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "3d" }
+    );
+
+    // Update session with token
+    const session = await prisma.session.findFirst({
+      where: { userId: updatedUser.id },
+    });
+
+    if (session) {
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { token: jwtToken },
+      });
+    }
+
+    res.send(
+      `Email verified successfully. You can now log in. Token: ${jwtToken}`
+    );
+  } catch (error) {
+    console.error("Email verification error:", error);
+    res.status(500).send("Something went wrong.");
   }
 };
 
@@ -322,109 +680,6 @@ export const deleteAdmin = async (req, res) => {
       success: false,
       message: error.message || "An error occurred while deleting admin.",
     });
-  }
-};
-
-export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(404).json({ message: "User not found." });
-
-    if (user.status !== "active")
-      return res.status(403).json({
-        message: `Your AksumBase account has been ${user.status} by an administrator. If you believe this was a mistake, please contact support.`,
-      });
-
-    // const isAdmin = email === "admin@gmail.com";
-    // const passwordMatch = isAdmin
-    //   ? password === user.password
-    //   : await bcrypt.compare(password, user.password);
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-
-    if (!passwordMatch)
-      return res.status(401).json({ message: "Invalid email or password." });
-
-    // 2FA
-    if (user.isTwoFactorEnabled) {
-      const otp = crypto.randomInt(100000, 999999).toString();
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          twoFactorTempToken: otp,
-          twoFactorTempExp: new Date(Date.now() + 5 * 60 * 1000),
-        },
-      });
-
-      await sendOtpEmail(user.email, otp);
-
-      return res.status(200).json({
-        success: true,
-        step: "2fa",
-        message: "OTP sent to your email. Please verify.",
-        email: user.email,
-      });
-    }
-
-    const deviceInfo = `${req.headers["user-agent"]} | IP: ${req.ip}`;
-    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-
-    // Step 1: Create session
-    const session = await prisma.session.create({
-      data: {
-        userId: user.id,
-        token: "temp",
-        deviceInfo,
-        expiresAt,
-      },
-    });
-
-    // Step 2: Generate token with sessionId
-    const jwtToken = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        sessionId: session.id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "3d" }
-    );
-
-    // Step 3: Update session with real token
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { token: jwtToken },
-    });
-
-    const { id, username, role, status, createdAt, isTwoFactorEnabled } = user;
-
-    res.status(200).json({
-      success: true,
-      message: "Login successful.",
-      payload: {
-        _id: id,
-        name: username,
-        email,
-        role,
-        status,
-        createdAt,
-        isTwoFactorEnabled,
-        token: jwtToken,
-        avatar: user?.avatar,
-      },
-    });
-  } catch (error) {
-    console.error("Login Error:", error);
-    res
-      .status(500)
-      .json({ message: error.message || "Server error during login." });
   }
 };
 

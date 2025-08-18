@@ -71,6 +71,8 @@ model User {
   status                Status    @default(pending)
   resetCode             String?
   resetCodeExpiration   DateTime? @default(now())
+  emailVerificationToken String?
+  emailVerificationExpires DateTime?
   flagged               Boolean?  @default(false)
   flagReason            String?
   isNotificationEnabled Boolean   @default(true)
