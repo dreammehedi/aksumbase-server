@@ -13,6 +13,7 @@ import {
   handleRenewStripeWebhook,
   handleStripeWebhook,
 } from "./controllers/auth/userRole.controller.js";
+import emailVerifyChecker from "./helper/emailVerifyChecker.js";
 import reminderEmailJob from "./helper/reminderEmailJob.js";
 import roleExpiryChecker from "./helper/roleExpiryChecker.js";
 import relevantPropertiesEmailSend from "./helper/sendRelevantPropertiesEmail.js";
@@ -250,4 +251,5 @@ app.use("/api", MortgageRateRouter);
 roleExpiryChecker();
 reminderEmailJob();
 relevantPropertiesEmailSend();
+emailVerifyChecker();
 export default app;
