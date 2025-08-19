@@ -739,11 +739,14 @@ export const sendResetCode = async (email, code) => {
   }
 
   const transporter = nodemailer.createTransport({
-    service: "Gmail",
+    service: emailConfig.emailHost || "smtp.gmail.com",
     auth: {
       user: emailConfig.emailAddress,
       pass: decryptedPassword,
     },
+     tls: {
+    rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
+  },
   });
 
   const mailOptions = {
@@ -803,11 +806,14 @@ async function sendOtpEmail(email, otp) {
   };
 
   const transporter = nodemailer.createTransport({
-    service: "Gmail",
+   service: emailConfig.emailHost || "smtp.gmail.com",
     auth: {
       user: emailConfig.emailAddress,
       pass: decryptedPassword,
     },
+    tls: {
+    rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
+  },
   });
   await transporter.sendMail(mailOptions);
 }
