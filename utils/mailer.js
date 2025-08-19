@@ -72,6 +72,9 @@ export const sendVerificationEmail = async (email, token, clientUrl) => {
       user: emailConfig.emailAddress,
       pass: decryptedPassword, // অবশ্যই Gmail App Password (decrypted) হবে
     },
+     tls: {
+    rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
+  },
   });
 
   const mailOptions = {
