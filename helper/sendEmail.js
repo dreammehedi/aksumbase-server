@@ -56,6 +56,9 @@ export const sendEmail = async ({ to, subject, html }) => {
       user: emailConfig.emailAddress,
       pass: decryptedPassword,
     },
+     tls: {
+    rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
+  },
   });
 
   const mailOptions = {
