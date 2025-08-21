@@ -467,14 +467,17 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
-    res.send(
-      `Email verified successfully. You can now log in. Token: ${jwtToken}`
-    );
+    res.status(200).json({
+      success: true,
+      message: `Email verified successfully. You can now log in.`,
+      token: jwtToken,
+    });
   } catch (error) {
     console.error("Email verification error:", error);
     res.status(500).send("Something went wrong.");
   }
 };
+
 
 export const registerAdmin = async (req, res) => {
   try {
