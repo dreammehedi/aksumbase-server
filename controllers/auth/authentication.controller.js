@@ -436,7 +436,7 @@ export const verifyEmail = async (req, res) => {
       },
     });
 
-    if (!user) return res.status(400).send("Token expired or invalid.");
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     // Activate user and remove verification token
     const updatedUser = await prisma.user.update({
@@ -474,10 +474,12 @@ export const verifyEmail = async (req, res) => {
     });
   } catch (error) {
     console.error("Email verification error:", error);
-    res.status(500).send("Something went wrong.");
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred during email verification.",
+    });
   }
 };
-
 
 export const registerAdmin = async (req, res) => {
   try {
@@ -747,9 +749,9 @@ export const sendResetCode = async (email, code) => {
       user: emailConfig.emailAddress,
       pass: decryptedPassword,
     },
-     tls: {
-    rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
-  },
+    tls: {
+      rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
+    },
   });
 
   const mailOptions = {
@@ -809,14 +811,14 @@ async function sendOtpEmail(email, otp) {
   };
 
   const transporter = nodemailer.createTransport({
-   service: emailConfig.emailHost || "smtp.gmail.com",
+    service: emailConfig.emailHost || "smtp.gmail.com",
     auth: {
       user: emailConfig.emailAddress,
       pass: decryptedPassword,
     },
     tls: {
-    rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
-  },
+      rejectUnauthorized: false, // 👉 SSL মিসম্যাচ ইগনোর করবে
+    },
   });
   await transporter.sendMail(mailOptions);
 }
